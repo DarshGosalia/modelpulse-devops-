@@ -1,0 +1,28 @@
+version: '3.8'
+
+# ==============================================================================
+# ModelPulse — Multi-Container / Service Orchestration (Unit 1.4)
+# ==============================================================================
+
+services:
+  modelpulse-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: modelpulse:latest
+    container_name: modelpulse-container
+    restart: always
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount host logs directory for persistent prediction & telemetry logging
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

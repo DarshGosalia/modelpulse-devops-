@@ -1,40 +1,244 @@
 <!DOCTYPE html>
-<html >
-<!--From https://codepen.io/frytyler/pen/EGdtg-->
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Predict Insurance Bill</title>
-  <link href='https://fonts.googleapis.com/css?family=Pacifico' rel='stylesheet' type='text/css'>
-<link href='https://fonts.googleapis.com/css?family=Arimo' rel='stylesheet' type='text/css'>
-<link href='https://fonts.googleapis.com/css?family=Hind:300' rel='stylesheet' type='text/css'>
-<link href='https://fonts.googleapis.com/css?family=Open+Sans+Condensed:300' rel='stylesheet' type='text/css'>
-<link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='./style.css') }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ModelPulse — Neo-Brutalist MLOps Pipeline</title>
+  <meta name="description" content="ModelPulse: Automated MLOps pipeline with PyCaret regression, Docker orchestration, and Jenkins CI/CD styled in Neo-brutalism.">
   
+  <!-- Neo-Brutalist Typography: Space Grotesk & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@500;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
 <body>
- <div class="login">
-	<h1>Predict Insurance Bill</h1>
 
-     <!-- Main Input For Receiving Query to our ML -->
-    <form action="{{ url_for('predict')}}"method="post">
-      <input type="text" name="age" placeholder="Age" required="required" /><br>
-    	<input type="text" name="sex" placeholder="Sex" required="required" /><br>
-        <input type="text" name="bmi" placeholder="BMI" required="required" /><br>
-        <input type="text" name="children" placeholder="Children" required="required" /><br>
-        <input type="text" name="smoker" placeholder="Smoker" required="required" /><br>
-        <input type="text" name="region" placeholder="Region" required="required" /><br>
-       
+  <div class="app-container">
+    <!-- Header Section -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-badge">
+          <span class="status-dot"></span>
+          <span class="badge-text">MLOps Engine • v1.0</span>
+        </div>
+        <h1 class="brand-title">
+          Model<span class="highlight-box">Pulse</span>
+        </h1>
+        <p class="brand-subtitle">Automated Retraining, Telemetry Monitoring & CI/CD Pipeline</p>
+      </div>
 
-        <button type="submit" class="btn btn-primary btn-block btn-large">Predict</button>
-    </form>
+      <div class="header-pills">
+        <span class="pill yellow">PyCaret 3.3.2</span>
+        <span class="pill purple">Docker Compose</span>
+        <span class="pill cyan">Jenkins CI/CD</span>
+        <a href="/health" target="_blank" class="pill green pill-link">/health [OK] ↗</a>
+      </div>
+    </header>
 
-   <br>
-   <br>
-  
-   
- </div>
- {{pred}}
+    <!-- Main Content Grid -->
+    <main class="main-grid">
+      <!-- Left Column: Prediction Form -->
+      <section class="card form-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h2 class="card-title">
+              <span>⚡</span> Insurance Premium Estimator
+            </h2>
+            <p class="card-desc">Enter demographic and medical attributes to compute real-time insurance charges.</p>
+          </div>
+          <!-- Quick Fill Presets for Instant Demo -->
+          <div class="preset-buttons">
+            <span class="preset-label">Presets</span>
+            <button type="button" class="preset-btn" onclick="fillPreset(28, 'male', 27.5, 1, 'no', 'southwest')">Standard</button>
+            <button type="button" class="preset-btn" onclick="fillPreset(45, 'female', 34.2, 2, 'yes', 'southeast')">High Risk</button>
+            <button type="button" class="preset-btn" onclick="fillPreset(19, 'female', 22.0, 0, 'no', 'northeast')">Young</button>
+          </div>
+        </div>
 
+        <form id="prediction-form" action="{{ url_for('predict') }}" method="POST" class="form">
+          <div class="form-row">
+            <!-- Age -->
+            <div class="form-group">
+              <label for="age" class="form-label">
+                <span class="label-tag">1</span> Age (Years)
+              </label>
+              <input type="number" id="age" name="age" min="18" max="100" value="{{ inputs.age if inputs else 28 }}" required class="form-input" placeholder="e.g. 28">
+            </div>
+
+            <!-- Sex -->
+            <div class="form-group">
+              <label for="sex" class="form-label">
+                <span class="label-tag">2</span> Sex
+              </label>
+              <select id="sex" name="sex" required class="form-select">
+                <option value="male" {% if inputs and inputs.sex == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if inputs and inputs.sex == 'female' %}selected{% endif %}>Female</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <!-- BMI -->
+            <div class="form-group">
+              <label for="bmi" class="form-label">
+                <span class="label-tag">3</span> BMI (kg/m²)
+              </label>
+              <input type="number" step="0.1" id="bmi" name="bmi" min="10" max="60" value="{{ inputs.bmi if inputs else 30.0 }}" required class="form-input" placeholder="e.g. 28.5">
+            </div>
+
+            <!-- Children -->
+            <div class="form-group">
+              <label for="children" class="form-label">
+                <span class="label-tag">4</span> Dependents
+              </label>
+              <input type="number" id="children" name="children" min="0" max="10" value="{{ inputs.children if inputs else 0 }}" required class="form-input" placeholder="e.g. 1">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <!-- Smoker -->
+            <div class="form-group">
+              <label for="smoker" class="form-label">
+                <span class="label-tag">5</span> Smoker Status
+              </label>
+              <select id="smoker" name="smoker" required class="form-select">
+                <option value="no" {% if inputs and inputs.smoker == 'no' %}selected{% endif %}>No (Non-smoker)</option>
+                <option value="yes" {% if inputs and inputs.smoker == 'yes' %}selected{% endif %}>Yes (Smoker)</option>
+              </select>
+            </div>
+
+            <!-- Region -->
+            <div class="form-group">
+              <label for="region" class="form-label">
+                <span class="label-tag">6</span> US Region
+              </label>
+              <select id="region" name="region" required class="form-select">
+                <option value="southwest" {% if inputs and inputs.region == 'southwest' %}selected{% endif %}>Southwest</option>
+                <option value="southeast" {% if inputs and inputs.region == 'southeast' %}selected{% endif %}>Southeast</option>
+                <option value="northwest" {% if inputs and inputs.region == 'northwest' %}selected{% endif %}>Northwest</option>
+                <option value="northeast" {% if inputs and inputs.region == 'northeast' %}selected{% endif %}>Northeast</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" id="submit-btn" class="submit-btn">
+            <span>Calculate Prediction</span>
+            <span class="btn-icon">➔</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Right Column: Prediction Result & Telemetry -->
+      <section class="card status-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h2 class="card-title">
+              <span>📊</span> Inference Telemetry
+            </h2>
+            <p class="card-desc">Real-time model prediction output and performance metrics.</p>
+          </div>
+        </div>
+
+        {% if pred_value %}
+        <!-- Active Prediction Result (Ticket / Receipt Style) -->
+        <div class="result-banner success">
+          <div class="result-meta">
+            <span class="result-label">ESTIMATED ANNUAL PREMIUM</span>
+            <span class="latency-badge">⚡ {{ latency }}</span>
+          </div>
+          <div class="result-amount">{{ pred_value }}</div>
+          <div class="result-footer">
+            <span class="check-icon">✓</span>
+            <span>Computed via deployment_28042020.pkl (Logged to logs/predictions.log)</span>
+          </div>
+        </div>
+        {% elif error %}
+        <!-- Error State -->
+        <div class="result-banner error">
+          <div class="result-meta">
+            <span class="result-label">SYSTEM ALERT</span>
+          </div>
+          <div class="error-message">{{ error }}</div>
+        </div>
+        {% else %}
+        <!-- Idle State -->
+        <div class="result-banner idle">
+          <div class="idle-icon">🏷️</div>
+          <div class="idle-title">Ready for Inference</div>
+          <p class="idle-desc">Pick a preset on the left or enter custom parameters to generate an instant estimate.</p>
+        </div>
+        {% endif %}
+
+        <!-- Architecture Specs & Telemetry -->
+        <div class="telemetry-box">
+          <div class="telemetry-header">
+            <span class="telemetry-title">DevOps Pipeline Specifications</span>
+            <span class="telemetry-tag">UNITS 1, 4, 6, 9, 10</span>
+          </div>
+          <ul class="specs-list">
+            <li>
+              <span class="spec-label">ML Framework</span>
+              <span class="spec-val">PyCaret 3.3.2 (Linear Regression)</span>
+            </li>
+            <li>
+              <span class="spec-label">Model Pipeline</span>
+              <span class="spec-val">deployment_28042020.pkl</span>
+            </li>
+            <li>
+              <span class="spec-label">Logging Sink</span>
+              <span class="spec-val">logs/predictions.log (JSONL)</span>
+            </li>
+            <li>
+              <span class="spec-label">CI/CD Automation</span>
+              <span class="spec-val">Jenkinsfile (4-Stage Pipeline)</span>
+            </li>
+            <li>
+              <span class="spec-label">Orchestration</span>
+              <span class="spec-val">Docker + Compose (Port 5000)</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- API Testing Quick Reference -->
+        <div class="api-snippet">
+          <div class="snippet-header">
+            <span class="snippet-title">cURL Smoke Test (Unit 4 / Jenkins)</span>
+            <button type="button" class="copy-btn" onclick="copyCurlSnippet()">Copy</button>
+          </div>
+          <pre><code id="curl-code">curl -X POST http://localhost:5000/predict_api \
+  -H "Content-Type: application/json" \
+  -d '{"age": 28, "sex": "male", "bmi": 33.0, "children": 3, "smoker": "no", "region": "southeast"}'</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>ModelPulse MLOps Platform • Neo-Brutalist Interface • Built with Flask, PyCaret, Docker & Jenkins</p>
+    </footer>
+  </div>
+
+  <script>
+    function fillPreset(age, sex, bmi, children, smoker, region) {
+      document.getElementById('age').value = age;
+      document.getElementById('sex').value = sex;
+      document.getElementById('bmi').value = bmi;
+      document.getElementById('children').value = children;
+      document.getElementById('smoker').value = smoker;
+      document.getElementById('region').value = region;
+    }
+
+    function copyCurlSnippet() {
+      const code = document.getElementById('curl-code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.innerText = 'Copied!';
+        setTimeout(() => btn.innerText = 'Copy', 2000);
+      });
+    }
+  </script>
 </body>
 </html>
