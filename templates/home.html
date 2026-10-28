@@ -116,23 +116,23 @@
             <span class="presets-label">Quick Profiles</span>
             <div class="presets-group">
               <button type="button" class="preset-chip" onclick="fillPreset(28, 'male', 24.5, 1, 'no', 'west')"
-                title="28yo male, non-smoker, West India (Mumbai/Pune)">
+                title="28yo male, non-smoker, West India (Mumbai) • Est. ~₹15,325/yr">
                 <span class="preset-avatar">👤</span> Standard (West)
               </button>
               <button type="button" class="preset-chip high-risk"
-                onclick="fillPreset(45, 'female', 31.2, 2, 'yes', 'south')" title="45yo female, smoker, South India (Bengaluru)">
+                onclick="fillPreset(45, 'female', 31.2, 2, 'yes', 'south')" title="45yo female, smoker, South India (Bengaluru) • Est. ~₹47,630/yr">
                 <span class="preset-avatar">⚠️</span> High Risk (South)
               </button>
               <button type="button" class="preset-chip" onclick="fillPreset(19, 'female', 21.8, 0, 'no', 'north')"
-                title="19yo female, student, North India (Delhi NCR)">
+                title="19yo female, student, North India (Delhi NCR) • Est. ~₹9,030/yr">
                 <span class="preset-avatar">🎓</span> Young Adult (North)
               </button>
               <button type="button" class="preset-chip" onclick="fillPreset(54, 'male', 29.4, 3, 'no', 'east')"
-                title="54yo male, East India (Kolkata), 3 dependents">
+                title="54yo male, East India (Kolkata), 3 dependents • Est. ~₹32,080/yr">
                 <span class="preset-avatar">👨‍👩‍👧‍👦</span> Family (East)
               </button>
               <button type="button" class="preset-chip" onclick="fillPreset(35, 'female', 22.5, 1, 'no', 'west')"
-                title="35yo female, fit BMI, West India (Ahmedabad)">
+                title="35yo female, fit BMI, West India (Ahmedabad) • Est. ~₹17,460/yr">
                 <span class="preset-avatar">💪</span> Healthy (West)
               </button>
             </div>
@@ -609,6 +609,15 @@
               </button>
               <button class="action-btn small danger" onclick="clearHistory()">Clear All</button>
             </div>
+          </div>
+        </div>
+        <div class="batch-results-header" style="margin-bottom: 8px; gap: 12px;">
+          <div class="table-search-box" style="flex: 1; max-width: 440px;">
+            <input type="text" id="history-search" placeholder="Search history (e.g. smoker, female, ₹25,000, west)..."
+              oninput="filterHistoryTable(this.value)">
+          </div>
+          <div class="history-record-counter" id="history-record-counter" style="font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; padding: 8px 14px; background: var(--bg-card-subtle); border: var(--border-sm); border-radius: var(--radius-xs);">
+            Total: 0 records
           </div>
         </div>
         <div class="history-table-wrapper">
@@ -1110,10 +1119,20 @@ print(response.json())
     {% endif %}
     }
 
-    function renderHistory() {
+    function renderHistory(recordsToRender, searchQuery = '') {
+      const records = recordsToRender !== undefined ? recordsToRender : predictionHistory;
       const body = document.getElementById('history-body');
       const empty = document.getElementById('history-empty');
+      const counter = document.getElementById('history-record-counter');
       body.innerHTML = '';
+
+      if (counter) {
+        if (searchQuery) {
+          counter.textContent = `Showing ${records.length} of ${predictionHistory.length} records`;
+        } else {
+          counter.textContent = `Total: ${predictionHistory.length} records`;
+        }
+      }
 
       if (predictionHistory.length === 0) {
         empty.style.display = 'flex';
@@ -1121,46 +1140,116 @@ print(response.json())
       }
       empty.style.display = 'none';
 
-      predictionHistory.forEach((entry, i) => {
+      if (records.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td colspan="10" style="text-align: center; padding: 36px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; background: var(--bg-card); color: #EF4444;">
+            🔍 No history records matching "${searchQuery}" found.
+          </td>`;
+        body.appendChild(tr);
+        return;
+      }
+
+      records.forEach((entry, i) => {
         const tr = document.createElement('tr');
         const d = new Date(entry.timestamp);
+        const dateStr = isNaN(d.getTime()) ? (entry.timestamp || '-') : `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        const isSmoker = (entry.inputs.smoker || '').toLowerCase() === 'yes';
+        const entryId = entry.id;
+
         tr.innerHTML = `
           <td>${i + 1}</td>
-          <td>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</td>
-          <td>${entry.inputs.age}</td>
-          <td>${entry.inputs.sex}</td>
-          <td>${entry.inputs.bmi}</td>
-          <td>${entry.inputs.children}</td>
-          <td><span class="table-badge ${entry.inputs.smoker === 'yes' ? 'danger' : 'safe'}">${entry.inputs.smoker}</span></td>
-          <td>${entry.inputs.region}</td>
-          <td class="pred-cell">${entry.prediction}</td>
+          <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;">${dateStr}</td>
+          <td>${entry.inputs.age || '-'}</td>
+          <td style="text-transform: capitalize;">${entry.inputs.sex || '-'}</td>
+          <td>${entry.inputs.bmi || '-'}</td>
+          <td>${entry.inputs.children || '0'}</td>
+          <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${entry.inputs.smoker || 'no'}</span></td>
+          <td style="text-transform: capitalize;">${entry.inputs.region || '-'}</td>
+          <td class="pred-cell">${entry.prediction || '-'}</td>
           <td>
-            <button class="table-action" onclick="loadFromHistory(${i})" title="Load">↻</button>
-            <button class="table-action danger" onclick="deleteHistoryItem(${i})" title="Delete">✕</button>
+            <button class="table-action" onclick="loadFromHistory(${entryId})" title="Load into Calculator">↻</button>
+            <button class="table-action danger" onclick="deleteHistoryItem(${entryId})" title="Delete">✕</button>
           </td>`;
         body.appendChild(tr);
       });
     }
 
-    function loadFromHistory(index) {
-      const entry = predictionHistory[index];
+    function filterHistoryTable(query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {
+        renderHistory(predictionHistory);
+        return;
+      }
+
+      const tokens = q.split(/\s+/).filter(Boolean);
+
+      const filtered = predictionHistory.filter((entry, i) => {
+        const isSmoker = String(entry.inputs.smoker || '').toLowerCase() === 'yes';
+        const smokerSemantic = isSmoker ? 'smoker yes smoking tobacco' : 'non-smoker nonsmoker no non smoker';
+        const isHighRisk = isSmoker || parseFloat(entry.inputs.bmi) >= 30;
+        const riskSemantic = isHighRisk ? 'high risk high-risk danger' : 'standard normal safe low-risk low risk';
+        const predStr = String(entry.prediction || '');
+        const predNum = parseFloat(predStr.replace(/[₹,$\s]/g, '')) || 0;
+        const d = new Date(entry.timestamp);
+        const dateStr = isNaN(d.getTime()) ? '' : `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+
+        const corpus = [
+          String(i + 1),
+          dateStr,
+          String(entry.inputs.age || ''),
+          String(entry.inputs.sex || ''),
+          String(entry.inputs.bmi || ''),
+          String(entry.inputs.children || ''),
+          smokerSemantic,
+          String(entry.inputs.smoker || ''),
+          String(entry.inputs.region || ''),
+          riskSemantic,
+          predStr,
+          String(Math.round(predNum))
+        ].join(' ').toLowerCase();
+
+        return tokens.every(token => corpus.includes(token));
+      });
+
+      renderHistory(filtered, q);
+    }
+
+    function loadFromHistory(idOrIndex) {
+      let entry = predictionHistory.find(e => e.id === idOrIndex);
+      if (!entry && typeof idOrIndex === 'number' && idOrIndex < predictionHistory.length) {
+        entry = predictionHistory[idOrIndex];
+      }
       if (!entry) return;
       fillPreset(entry.inputs.age, entry.inputs.sex, entry.inputs.bmi, entry.inputs.children, entry.inputs.smoker, entry.inputs.region);
       switchTab('predict');
       showToast('Profile loaded from history');
     }
 
-    function deleteHistoryItem(index) {
-      predictionHistory.splice(index, 1);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
-      renderHistory();
-      renderAnalytics();
+    function deleteHistoryItem(idOrIndex) {
+      let idx = predictionHistory.findIndex(e => e.id === idOrIndex);
+      if (idx === -1 && typeof idOrIndex === 'number' && idOrIndex < predictionHistory.length) {
+        idx = idOrIndex;
+      }
+      if (idx !== -1) {
+        predictionHistory.splice(idx, 1);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
+        const searchInput = document.getElementById('history-search');
+        if (searchInput && searchInput.value) {
+          filterHistoryTable(searchInput.value);
+        } else {
+          renderHistory();
+        }
+        renderAnalytics();
+      }
     }
 
     function clearHistory() {
       if (confirm('Clear all prediction history?')) {
         predictionHistory = [];
         localStorage.setItem(STORAGE_KEY, '[]');
+        const searchInput = document.getElementById('history-search');
+        if (searchInput) searchInput.value = '';
         renderHistory();
         renderAnalytics();
         showToast('History cleared');
@@ -1485,7 +1574,7 @@ print(response.json())
         <tr>
           <td>Age</td>
           <td class="val-cell">${inputs.age} years</td>
-          <td>${inputs.age >= 50 ? 'Senior Risk Weighting (+₹257/yr)' : inputs.age >= 35 ? 'Moderate Demographic' : 'Baseline Young Tier'}</td>
+          <td>${inputs.age >= 50 ? 'Senior Risk Multiplier (+₹380/yr)' : inputs.age >= 35 ? 'Moderate Demographic (+₹380/yr)' : 'Baseline Entry Adult Tier'}</td>
         </tr>
         <tr>
           <td>Biological Sex</td>
@@ -1495,19 +1584,19 @@ print(response.json())
         <tr>
           <td>Body Mass Index (BMI)</td>
           <td class="val-cell">${inputs.bmi} kg/m²</td>
-          <td>${inputs.bmi >= 30 ? 'Obesity Category (High Factor)' : inputs.bmi >= 25 ? 'Overweight Category' : 'Normal / Ideal Health Tier'}</td>
+          <td>${inputs.bmi >= 30 ? 'Obesity Category (+₹350/unit)' : inputs.bmi >= 24 ? 'Overweight Category (+₹350/unit)' : 'Normal / Ideal Health Tier'}</td>
         </tr>
         <tr>
           <td>Dependents / Children</td>
           <td class="val-cell">${inputs.children}</td>
-          <td>Family Dependent Loading (+₹474/dep)</td>
+          <td>Family Floater Loading (+₹2,650/dep)</td>
         </tr>
         <tr>
           <td>Smoker Status</td>
           <td class="val-cell" style="text-transform:capitalize;">
             <span class="badge ${inputs.smoker === 'yes' ? 'badge-yes' : 'badge-no'}">${inputs.smoker}</span>
           </td>
-          <td>${inputs.smoker === 'yes' ? 'CRITICAL RISK FACTOR (+₹23,823 Surcharge)' : 'Preferred Non-Smoker Tier'}</td>
+          <td>${inputs.smoker === 'yes' ? 'CRITICAL RISK FACTOR (+₹21,500 Surcharge)' : 'Preferred Non-Tobacco Tier'}</td>
         </tr>
         <tr>
           <td>Indian Geographic Region</td>
@@ -1741,7 +1830,42 @@ print(response.json())
         if (data.status === 'success' && data.records) {
           batchResultsData = data.records;
           renderBatchResults(batchResultsData, data.latency_ms);
-          showToast(`Batch scoring complete for ${batchResultsData.length} records!`);
+
+          // Save all scored batch CSV records to History (localStorage)
+          const now = Date.now();
+          const batchHistoryItems = [];
+          data.records.forEach((r, idx) => {
+            if (r.predicted_charge !== null && r.predicted_charge !== undefined) {
+              const pVal = Number(r.predicted_charge);
+              batchHistoryItems.push({
+                id: now + idx,
+                timestamp: new Date(now - (data.records.length - idx) * 30).toISOString(),
+                source: 'batch_csv',
+                inputs: {
+                  age: r.age,
+                  sex: r.sex,
+                  bmi: r.bmi,
+                  children: r.children,
+                  smoker: r.smoker,
+                  region: r.region
+                },
+                prediction: '₹' + pVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                latency: data.latency_ms ? (data.latency_ms / data.records.length).toFixed(1) + ' ms' : '1.5 ms'
+              });
+            }
+          });
+
+          if (batchHistoryItems.length > 0) {
+            predictionHistory.unshift(...batchHistoryItems);
+            if (predictionHistory.length > 500) {
+              predictionHistory = predictionHistory.slice(0, 500);
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
+            renderHistory();
+            renderAnalytics();
+          }
+
+          showToast(`Batch complete: ${batchResultsData.length} policyholders scored & saved to History!`, 'success');
         } else {
           showToast(`Batch error: ${data.message || 'Failed to score'}`, 'warn');
         }
@@ -1770,9 +1894,19 @@ print(response.json())
       renderBatchTable(records);
     }
 
-    function renderBatchTable(records) {
+    function renderBatchTable(records, searchQuery = '') {
       const tbody = document.getElementById('batch-table-body');
       tbody.innerHTML = '';
+
+      if (!records || records.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td colspan="9" style="text-align: center; padding: 36px; font-weight: 800; font-family: 'Space Grotesk', sans-serif; background: var(--bg-card); color: #EF4444;">
+            🔍 No records found matching "${searchQuery}". Try searching by age, sex, smoker status, region, or premium amount.
+          </td>`;
+        tbody.appendChild(tr);
+        return;
+      }
 
       records.slice(0, 300).forEach((row, i) => {
         const tr = document.createElement('tr');
@@ -1788,7 +1922,7 @@ print(response.json())
           <td>${row.children || '0'}</td>
           <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${row.smoker || 'no'}</span></td>
           <td style="text-transform:capitalize;">${row.region || '-'}</td>
-          <td class="pred-cell">${pred !== null ? '₹' + Number(pred).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '<span style="color:#EF4444">Validation Error</span>'}</td>
+          <td class="pred-cell">${pred !== null && pred !== undefined ? '₹' + Number(pred).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '<span style="color:#EF4444">Validation Error</span>'}</td>
           <td><span class="table-badge ${isHighRisk ? 'danger' : 'safe'}">${isHighRisk ? 'HIGH RISK' : 'STANDARD'}</span></td>
         `;
         tbody.appendChild(tr);
@@ -1796,15 +1930,49 @@ print(response.json())
     }
 
     function filterBatchTable(query) {
-      query = query.toLowerCase().trim();
-      if (!query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {
         renderBatchTable(batchResultsData);
         return;
       }
-      const filtered = batchResultsData.filter(r => {
-        return Object.values(r).some(val => String(val).toLowerCase().includes(query));
+
+      const tokens = q.split(/\s+/).filter(Boolean);
+
+      const filtered = batchResultsData.filter((r, i) => {
+        const isSmoker = String(r.smoker || '').toLowerCase() === 'yes';
+        const smokerSemantic = isSmoker ? 'smoker yes smoking tobacco' : 'non-smoker nonsmoker no non smoker';
+        const isHighRisk = isSmoker || parseFloat(r.bmi) >= 30;
+        const riskSemantic = isHighRisk ? 'high risk high-risk danger' : 'standard normal safe low-risk low risk';
+        const predNum = Number(r.predicted_charge || 0);
+        const predFormatted = '₹' + predNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const predPlain = '₹' + Math.round(predNum).toLocaleString('en-IN');
+        const rawPred = String(r.predicted_charge || '');
+        const regionStr = String(r.region || '').toLowerCase();
+        const regionSemantic = regionStr.includes('north') ? 'north india ncr delhi' :
+                              regionStr.includes('south') ? 'south india bengaluru chennai' :
+                              regionStr.includes('east') ? 'east india kolkata' : 'west india mumbai pune';
+
+        const rowCorpus = [
+          String(i + 1),
+          String(r.age || ''),
+          String(r.sex || ''),
+          String(r.bmi || ''),
+          String(r.children || ''),
+          smokerSemantic,
+          String(r.smoker || ''),
+          regionStr,
+          regionSemantic,
+          riskSemantic,
+          predFormatted,
+          predPlain,
+          rawPred,
+          String(Math.round(predNum))
+        ].join(' ').toLowerCase();
+
+        return tokens.every(token => rowCorpus.includes(token));
       });
-      renderBatchTable(filtered);
+
+      renderBatchTable(filtered, q);
     }
 
     function exportBatchCsv() {
