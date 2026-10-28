@@ -26,6 +26,24 @@ if [[ "$EUID" -ne 0 ]]; then
    exit 1
 fi
 
+# Check RAM and automatically allocate 4GB swap if running on t2.micro (<2GB RAM)
+TOTAL_RAM_MB=$(free -m | awk '/^Mem:/{print $2}')
+if [ "$TOTAL_RAM_MB" -lt 2500 ]; then
+    echo -e "${YELLOW}>>> Low memory detected (${TOTAL_RAM_MB}MB). Configuring 4GB Swap file to prevent Jenkins/Docker OOM crashes...${NC}"
+    if ! swapon --show | grep -q "/swapfile"; then
+        if [ ! -f /swapfile ]; then
+            fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096
+            chmod 600 /swapfile
+            mkswap /swapfile
+        fi
+        swapon /swapfile || true
+        if ! grep -q "/swapfile" /etc/fstab; then
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+        echo -e "${GREEN}[OK] 4GB Swap successfully configured and activated!${NC}"
+    fi
+fi
+
 echo -e "${YELLOW}>>> Step 1/6: Updating system packages and installing prerequisites...${NC}"
 apt-get update -y
 DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
