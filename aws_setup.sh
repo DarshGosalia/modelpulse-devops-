@@ -85,16 +85,18 @@ systemctl enable docker
 echo -e "${GREEN}[OK] Docker installed successfully:${NC} $(docker --version)"
 
 echo -e "\n${YELLOW}>>> Step 4/6: Installing Jenkins CI/CD Automation Server...${NC}"
-# Add official Jenkins repository keyring
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | tee \
-  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+# Add official Jenkins repository keyring (support 2026 / 2023 key rotation)
+install -m 0755 -d /etc/apt/keyrings
+rm -f /etc/apt/keyrings/jenkins-keyring.asc /etc/apt/keyrings/jenkins-keyring.gpg
+wget -q -O /etc/apt/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key || \
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key > /etc/apt/keyrings/jenkins-keyring.asc || \
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key > /etc/apt/keyrings/jenkins-keyring.asc
 
-echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
-  https://pkg.jenkins.io/debian-stable binary/ | tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
+chmod a+r /etc/apt/keyrings/jenkins-keyring.asc
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | tee /etc/apt/sources.list.d/jenkins.list > /dev/null
 
 apt-get update -y
-apt-get install -y jenkins
+apt-get install -y fontconfig openjdk-17-jre jenkins
 
 # Enable and start Jenkins
 systemctl start jenkins
