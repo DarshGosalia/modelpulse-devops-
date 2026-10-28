@@ -124,38 +124,80 @@ def initialize_model():
 initialize_model()
 
 
+def normalize_region(r: str) -> str:
+    """Normalize Indian and legacy US regions into standard Indian geographic regions."""
+    r = str(r or "west").strip().lower()
+    mapping = {
+        "north": "north", "northeast": "north",
+        "south": "south", "southeast": "south",
+        "east": "east", "northwest": "east",
+        "west": "west", "southwest": "west",
+        "central": "north"
+    }
+    return mapping.get(r, "west")
+
+
 def run_inference_dict(row: dict) -> float:
-    """Predict charge for a single dictionary of features."""
+    """Predict charge for a single dictionary of features with Indian/US region compatibility."""
     if model is None:
         initialize_model()
+
+    infer_row = dict(row)
+    norm_region = normalize_region(infer_row.get("region", "west"))
+    infer_row["region"] = norm_region
 
     if model_type == "pycaret":
         import pandas as pd
         from pycaret.regression import predict_model
-        df = pd.DataFrame([row])
-        preds = predict_model(model, data=df)
-        label_col = "prediction_label" if "prediction_label" in preds.columns else "Label"
-        return float(preds[label_col].iloc[0])
+        try:
+            df = pd.DataFrame([infer_row])
+            preds = predict_model(model, data=df)
+            label_col = "prediction_label" if "prediction_label" in preds.columns else "Label"
+            return float(preds[label_col].iloc[0])
+        except Exception:
+            # Fallback to legacy US region name if pipeline was trained on original dataset
+            us_map = {"west": "southwest", "south": "southeast", "east": "northwest", "north": "northeast"}
+            infer_row["region"] = us_map.get(norm_region, "southwest")
+            df = pd.DataFrame([infer_row])
+            preds = predict_model(model, data=df)
+            label_col = "prediction_label" if "prediction_label" in preds.columns else "Label"
+            return float(preds[label_col].iloc[0])
+
     elif model_type == "pickle" and hasattr(model, "predict"):
         try:
             import pandas as pd
-            df = pd.DataFrame([row])
+            df = pd.DataFrame([infer_row])
             return float(model.predict(df)[0])
         except Exception:
-            if hasattr(model, "predict_one"):
-                return float(model.predict_one(row))
-            return float(model.predict([row])[0])
+            us_map = {"west": "southwest", "south": "southeast", "east": "northwest", "north": "northeast"}
+            infer_row["region"] = us_map.get(norm_region, "southwest")
+            try:
+                import pandas as pd
+                df = pd.DataFrame([infer_row])
+                return float(model.predict(df)[0])
+            except Exception:
+                if hasattr(model, "predict_one"):
+                    return float(model.predict_one(row))
+                return float(model.predict([row])[0])
+
     elif hasattr(model, "predict_one"):
         return float(model.predict_one(row))
     else:
-        # Mathematical fallback
+        # Calibrated baseline regression formula
         age = float(row.get('age', 28))
         bmi = float(row.get('bmi', 30.0))
         children = float(row.get('children', 0))
         smoker = str(row.get('smoker', 'no')).lower().strip()
+        reg = normalize_region(row.get('region', 'west'))
         val = 257.29 * age + 322.62 * bmi + 474.41 * children - 11633.5
         if smoker == 'yes':
             val += 23823.39
+        if reg == 'south':
+            val += -1035.23
+        elif reg == 'east':
+            val += -352.82
+        elif reg == 'north':
+            val += 960.02
         return max(round(val, 2), 1000.0)
 
 
@@ -198,10 +240,14 @@ def validate_inputs(data: dict) -> tuple:
         errors.append("Smoker must be 'yes' or 'no'")
     sanitized["smoker"] = smoker
 
-    region = str(data.get("region", "southwest")).strip().lower()
-    if region not in ("southwest", "southeast", "northwest", "northeast"):
-        errors.append("Region must be one of: southwest, southeast, northwest, northeast")
-    sanitized["region"] = region
+    valid_regions = (
+        "north", "south", "east", "west", "central",
+        "southwest", "southeast", "northwest", "northeast"
+    )
+    raw_region = str(data.get("region", "west")).strip().lower()
+    if raw_region not in valid_regions:
+        errors.append("Region must be one of: north, south, east, west")
+    sanitized["region"] = normalize_region(raw_region)
 
     if errors:
         return None, "; ".join(errors)
@@ -236,7 +282,7 @@ if has_flask:
                 "bmi": request.form.get("bmi", 30.0),
                 "children": request.form.get("children", 0),
                 "smoker": request.form.get("smoker", "no"),
-                "region": request.form.get("region", "southwest")
+                "region": request.form.get("region", "west")
             }
             inputs_dict, validation_error = validate_inputs(raw_inputs)
             if validation_error:
@@ -245,7 +291,7 @@ if has_flask:
             pred_val = run_inference_dict(inputs_dict)
             latency = (time.time() - start_time) * 1000
             log_prediction_event("/predict", inputs_dict, round(pred_val, 2), latency, 200)
-            formatted_pred = f"${pred_val:,.2f}"
+            formatted_pred = f"₹{pred_val:,.2f}"
             return render_template(
                 "home.html",
                 pred=f"Expected Bill will be {formatted_pred}",
@@ -441,8 +487,8 @@ else:
                     <span class="result-latency">⚡ {latency}</span>
                   </div>
                   <div class="result-amount-group">
-                    <span class="result-currency">$</span>
-                    <span class="result-amount" id="result-amount">{pred_val.replace('$','')}</span>
+                    <span class="result-currency">₹</span>
+                    <span class="result-amount" id="result-amount">{pred_val.replace('₹','').replace('$','')}</span>
                     <span class="result-period">/year</span>
                   </div>
                 </div>'''
@@ -522,7 +568,7 @@ else:
                     "bmi": form_data.get("bmi", ["30.0"])[0],
                     "children": form_data.get("children", ["0"])[0],
                     "smoker": form_data.get("smoker", ["no"])[0],
-                    "region": form_data.get("region", ["southwest"])[0],
+                    "region": form_data.get("region", ["west"])[0],
                 }
                 inputs, err = validate_inputs(raw)
                 if err:
@@ -538,7 +584,7 @@ else:
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.end_headers()
-                self.wfile.write(self._render_ui(pred_val=f"${val:,.2f}", latency=f"{latency:.1f} ms", inputs=inputs))
+                self.wfile.write(self._render_ui(pred_val=f"₹{val:,.2f}", latency=f"{latency:.1f} ms", inputs=inputs))
 
             elif parsed.path == "/predict_api":
                 try:

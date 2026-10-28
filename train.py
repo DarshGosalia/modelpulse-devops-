@@ -30,9 +30,9 @@ def log_training_event(event_type: str, details: dict):
     print(f"[{timestamp}] [{event_type}] {json.dumps(details, indent=2)}")
 
 class PurePythonLinearModel:
-    """Lightweight standalone regression predictor when external ML libraries are downloading."""
+    """Lightweight standalone regression predictor for Indian health insurance."""
     def __init__(self):
-        # Ordinary Least Squares coefficients calculated on the standard insurance dataset
+        # Ordinary Least Squares coefficients calibrated on the insurance dataset
         self.intercept = -11633.5
         self.coef = {
             'age': 257.29,
@@ -40,9 +40,15 @@ class PurePythonLinearModel:
             'children': 474.41,
             'smoker_yes': 23823.39,
             'sex_male': -131.11,
+            'region_south': -1035.23,
+            'region_east': -352.82,
+            'region_north': 960.02,
+            'region_west': 0.0,
+            # Legacy US aliases
             'region_southeast': -1035.23,
             'region_northwest': -352.82,
-            'region_northeast': 960.02
+            'region_northeast': 960.02,
+            'region_southwest': 0.0
         }
 
     def predict_one(self, row: dict) -> float:
@@ -51,7 +57,17 @@ class PurePythonLinearModel:
         children = float(row.get('children', 0))
         sex = str(row.get('sex', 'male')).lower().strip()
         smoker = str(row.get('smoker', 'no')).lower().strip()
-        region = str(row.get('region', 'southwest')).lower().strip()
+        raw_region = str(row.get('region', 'west')).lower().strip()
+
+        # Map both Indian and US regions to standardized regions
+        region_map = {
+            'west': 'west', 'southwest': 'west',
+            'south': 'south', 'southeast': 'south',
+            'east': 'east', 'northwest': 'east',
+            'north': 'north', 'northeast': 'north',
+            'central': 'north'
+        }
+        region = region_map.get(raw_region, 'west')
 
         score = self.intercept
         score += self.coef['age'] * age
@@ -61,12 +77,12 @@ class PurePythonLinearModel:
             score += self.coef['smoker_yes']
         if sex == 'male':
             score += self.coef['sex_male']
-        if region == 'southeast':
-            score += self.coef['region_southeast']
-        elif region == 'northwest':
-            score += self.coef['region_northwest']
-        elif region == 'northeast':
-            score += self.coef['region_northeast']
+        if region == 'south':
+            score += self.coef['region_south']
+        elif region == 'east':
+            score += self.coef['region_east']
+        elif region == 'north':
+            score += self.coef['region_north']
         return max(round(score, 2), 1000.0)
 
     def predict(self, data):

@@ -151,8 +151,8 @@ def print_dashboard(metrics: dict, training_info: dict = None):
 
     # Prediction Distribution
     print(f"\n  ┌─ PREDICTION DISTRIBUTION {'─' * (width - 29)}┐")
-    print(f"  │ Mean Premium:   ${metrics['prediction_mean']:>12,.2f}")
-    print(f"  │ Std Deviation:  ${metrics['prediction_std']:>12,.2f}")
+    print(f"  │ Mean Premium:   ₹{metrics['prediction_mean']:>12,.2f}")
+    print(f"  │ Std Deviation:  ₹{metrics['prediction_std']:>12,.2f}")
     if metrics['prediction_mean'] > 0:
         cv = metrics['prediction_std'] / metrics['prediction_mean']
         print(f"  │ Coefficient of Variation: {cv:>6.2f}")

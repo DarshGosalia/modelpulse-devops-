@@ -68,7 +68,7 @@ pipeline {
                     echo "Running REST API Prediction Smoke Test (POST /predict_api)..."
                     PRED_RESPONSE=$(curl -f -s -X POST http://localhost:${APP_PORT}/predict_api \
                         -H "Content-Type: application/json" \
-                        -d '{"age": 28, "sex": "male", "bmi": 33.0, "children": 3, "smoker": "no", "region": "southeast"}')
+                        -d '{"age": 28, "sex": "male", "bmi": 24.5, "children": 1, "smoker": "no", "region": "south"}')
                     
                     echo "API Response: ${PRED_RESPONSE}"
                     echo "${PRED_RESPONSE}" | grep -q "prediction"
@@ -78,7 +78,7 @@ pipeline {
                     echo "Running Batch Prediction Smoke Test..."
                     BATCH_RESPONSE=$(curl -f -s -X POST http://localhost:${APP_PORT}/predict_api \
                         -H "Content-Type: application/json" \
-                        -d '[{"age": 25, "sex": "female", "bmi": 24.0, "children": 0, "smoker": "no", "region": "northeast"}, {"age": 52, "sex": "male", "bmi": 35.0, "children": 2, "smoker": "yes", "region": "southwest"}]')
+                        -d '[{"age": 25, "sex": "female", "bmi": 21.8, "children": 0, "smoker": "no", "region": "north"}, {"age": 52, "sex": "male", "bmi": 29.4, "children": 2, "smoker": "yes", "region": "west"}]')
                     echo "${BATCH_RESPONSE}" | grep -q "batch_size"
                     echo "Batch prediction smoke test passed!"
 
@@ -86,7 +86,7 @@ pipeline {
                     echo "Running CSV Batch Upload Smoke Test (POST /predict_csv)..."
                     CSV_RESPONSE=$(curl -f -s -X POST http://localhost:${APP_PORT}/predict_csv \
                         -H "Content-Type: text/plain" \
-                        --data-binary $'age,sex,bmi,children,smoker,region\n28,male,30.0,1,no,southwest\n45,female,34.0,2,yes,southeast')
+                        --data-binary $'age,sex,bmi,children,smoker,region\n28,male,24.5,1,no,west\n45,female,31.2,2,yes,south')
                     echo "${CSV_RESPONSE}" | grep -q "total_rows"
                     echo "CSV batch smoke test passed!"
 

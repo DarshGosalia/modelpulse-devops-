@@ -164,10 +164,10 @@ curl -X POST http://localhost:5000/predict_api \
   -d '{
     "age": 28,
     "sex": "male",
-    "bmi": 33.0,
-    "children": 3,
+    "bmi": 24.5,
+    "children": 1,
     "smoker": "no",
-    "region": "southeast"
+    "region": "west"
   }'
 ```
 
@@ -176,8 +176,8 @@ curl -X POST http://localhost:5000/predict_api \
 curl -X POST http://localhost:5000/predict_api \
   -H "Content-Type: application/json" \
   -d '[
-    {"age": 25, "sex": "female", "bmi": 24.0, "children": 0, "smoker": "no", "region": "northeast"},
-    {"age": 52, "sex": "male", "bmi": 35.0, "children": 2, "smoker": "yes", "region": "southwest"}
+    {"age": 25, "sex": "female", "bmi": 21.8, "children": 0, "smoker": "no", "region": "north"},
+    {"age": 52, "sex": "male", "bmi": 29.4, "children": 2, "smoker": "yes", "region": "south"}
   ]'
 ```
 
@@ -185,7 +185,7 @@ curl -X POST http://localhost:5000/predict_api \
 ```bash
 curl -X POST http://localhost:5000/predict_csv \
   -H "Content-Type: text/plain" \
-  --data-binary @data/insurance.csv
+  --data-binary @data/sample_insurance_india.csv
 ```
 
 ### 3. Real-Time Telemetry & Metrics Endpoints
