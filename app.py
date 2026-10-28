@@ -565,6 +565,11 @@ else:
                         "model": MODEL_NAME
                     }
                     self.wfile.write(json.dumps(res).encode("utf-8"))
+                except Exception as e:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
             elif parsed.path == "/predict_csv":
                 try:
                     reader = csv.DictReader(io.StringIO(body))
