@@ -64,7 +64,7 @@ pipeline {
                     curl -f -s http://localhost:${APP_PORT}/health | grep -q "healthy"
                     echo "Health check passed!"
 
-                    # 2. Automated Smoke Test via REST API (POST /predict_api)
+                    # 2. Automated Smoke Test via REST API (POST /predict_api - Single Record)
                     echo "Running REST API Prediction Smoke Test (POST /predict_api)..."
                     PRED_RESPONSE=$(curl -f -s -X POST http://localhost:${APP_PORT}/predict_api \
                         -H "Content-Type: application/json" \
@@ -72,12 +72,26 @@ pipeline {
                     
                     echo "API Response: ${PRED_RESPONSE}"
                     echo "${PRED_RESPONSE}" | grep -q "prediction"
-                    echo "Prediction smoke test passed!"
+                    echo "Single prediction smoke test passed!"
+
+                    # 3. Batch Prediction Smoke Test (POST /predict_api - Array)
+                    echo "Running Batch Prediction Smoke Test..."
+                    BATCH_RESPONSE=$(curl -f -s -X POST http://localhost:${APP_PORT}/predict_api \
+                        -H "Content-Type: application/json" \
+                        -d '[{"age": 25, "sex": "female", "bmi": 24.0, "children": 0, "smoker": "no", "region": "northeast"}, {"age": 52, "sex": "male", "bmi": 35.0, "children": 2, "smoker": "yes", "region": "southwest"}]')
+                    echo "${BATCH_RESPONSE}" | grep -q "batch_size"
+                    echo "Batch prediction smoke test passed!"
+
+                    # 4. Metrics & History Endpoints Verification
+                    echo "Verifying /api/metrics and /api/history..."
+                    curl -f -s http://localhost:${APP_PORT}/api/metrics | grep -q "total_predictions"
+                    curl -f -s http://localhost:${APP_PORT}/api/history | grep -q "predictions"
+                    echo "Metrics and History APIs verified!"
 
                     # Copy container logs to host if needed and run monitoring script
                     docker cp ${CONTAINER_NAME}:/app/logs/. ./logs/ || true
 
-                    # 3. Telemetry & Log Monitoring verification (Unit 6.2 & 9.4)
+                    # 5. Telemetry & Log Monitoring verification (Unit 6.2 & 9.4)
                     echo "Executing monitor_logs.py to summarize inference telemetry..."
                     if command -v python3 &> /dev/null; then
                         python3 monitor_logs.py

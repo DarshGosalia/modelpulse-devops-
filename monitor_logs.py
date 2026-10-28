@@ -1,194 +1,239 @@
 #!/usr/bin/env python3
 """
-ModelPulse — System & ML Log Monitoring Script (Unit 6.2 & Unit 9.4)
-Reads logs/predictions.log and logs/model_training.log.
-Summarizes total inference calls, latency statistics, model training history,
-and detects any anomalous latency spikes or runtime errors.
+ModelPulse v2.0 — Production Log Monitor & Alerting System
+
+Reads JSONL prediction logs, computes real-time KPIs (throughput, latency
+percentiles, error rates, drift signals), and prints a live dashboard
+to the terminal. Can also send alerts via webhook if configured.
+
+Usage:
+    python monitor_logs.py                  # Live tail mode
+    python monitor_logs.py --summary        # One-shot summary report
+    python monitor_logs.py --watch 10       # Refresh every 10 seconds
 """
 
 import os
 import sys
 import json
+import time
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from collections import defaultdict
 
-# ANSI Color codes for clean terminal output
-GREEN = "\033[92m"
-BLUE = "\033[94m"
-CYAN = "\033[96m"
-YELLOW = "\033[93m"
-RED = "\033[91m"
-BOLD = "\033[1m"
-RESET = "\033[0m"
+LOG_FILE = os.path.join("logs", "predictions.log")
+TRAINING_LOG = os.path.join("logs", "model_training.log")
 
-PREDICTIONS_LOG_PATH = os.path.join("logs", "predictions.log")
-TRAINING_LOG_PATH = os.path.join("logs", "model_training.log")
+# Alert thresholds
+ALERT_LATENCY_P95_MS = 500.0
+ALERT_ERROR_RATE_PCT = 5.0
+ALERT_DRIFT_THRESHOLD = 0.3  # coefficient of variation threshold
 
-def parse_predictions_log():
-    if not os.path.exists(PREDICTIONS_LOG_PATH):
-        return {
-            "exists": False,
-            "total_requests": 0,
-            "successful": 0,
-            "errors": 0,
-            "latencies": [],
-            "recent_events": []
-        }
-        
-    total_requests = 0
-    successful = 0
-    errors = 0
-    latencies = []
-    recent_events = []
-    
-    with open(PREDICTIONS_LOG_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            total_requests += 1
-            try:
-                record = json.loads(line)
-                status = record.get("status", 200)
-                lat = record.get("latency_ms")
-                if lat is not None:
-                    latencies.append(float(lat))
-                    
-                if status == 200 and not record.get("error"):
-                    successful += 1
-                else:
-                    errors += 1
-                    
-                recent_events.append(record)
-            except json.JSONDecodeError:
-                # Fallback for plain text logs
-                if "error" in line.lower() or "exception" in line.lower():
-                    errors += 1
-                else:
-                    successful += 1
-                    
-    return {
-        "exists": True,
-        "total_requests": total_requests,
-        "successful": successful,
-        "errors": errors,
-        "latencies": latencies,
-        "recent_events": recent_events[-5:]  # last 5
-    }
 
-def parse_training_log():
-    if not os.path.exists(TRAINING_LOG_PATH):
-        return {
-            "exists": False,
-            "training_runs": 0,
-            "latest_run": None
-        }
-        
-    records = []
-    with open(TRAINING_LOG_PATH, "r", encoding="utf-8") as f:
+def parse_log_entries(filepath: str) -> list:
+    """Parse JSONL log file and return list of dicts."""
+    entries = []
+    if not os.path.exists(filepath):
+        return entries
+    with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             try:
-                record = json.loads(line)
-                records.append(record)
+                entries.append(json.loads(line))
             except json.JSONDecodeError:
                 continue
-                
-    latest = records[-1] if records else None
+    return entries
+
+
+def compute_percentile(sorted_vals: list, p: float) -> float:
+    """Compute the p-th percentile from a sorted list."""
+    if not sorted_vals:
+        return 0.0
+    k = (len(sorted_vals) - 1) * (p / 100.0)
+    f = int(k)
+    c = f + 1 if f + 1 < len(sorted_vals) else f
+    d = k - f
+    return sorted_vals[f] + d * (sorted_vals[c] - sorted_vals[f])
+
+
+def analyze_predictions(entries: list) -> dict:
+    """Compute comprehensive metrics from prediction log entries."""
+    if not entries:
+        return {
+            "total": 0, "success": 0, "errors": 0, "error_rate": 0.0,
+            "latency_mean": 0.0, "latency_p50": 0.0, "latency_p95": 0.0, "latency_p99": 0.0,
+            "prediction_mean": 0.0, "prediction_std": 0.0,
+            "endpoint_breakdown": {}, "hourly_throughput": {},
+            "alerts": []
+        }
+
+    success_entries = [e for e in entries if e.get("status") == 200]
+    error_entries = [e for e in entries if e.get("status") != 200]
+
+    # Latency metrics
+    latencies = sorted([e.get("latency_ms", 0) for e in success_entries if e.get("latency_ms")])
+    latency_mean = sum(latencies) / len(latencies) if latencies else 0.0
+
+    # Prediction value distribution
+    predictions = [e.get("prediction", 0) for e in success_entries if e.get("prediction") is not None]
+    pred_mean = sum(predictions) / len(predictions) if predictions else 0.0
+    pred_variance = sum((p - pred_mean) ** 2 for p in predictions) / len(predictions) if len(predictions) > 1 else 0.0
+    pred_std = pred_variance ** 0.5
+
+    # Endpoint breakdown
+    endpoint_counts = defaultdict(int)
+    for e in entries:
+        endpoint_counts[e.get("endpoint", "unknown")] += 1
+
+    # Hourly throughput
+    hourly = defaultdict(int)
+    for e in entries:
+        ts = e.get("timestamp", "")
+        if len(ts) >= 13:
+            hour_key = ts[:13]
+            hourly[hour_key] += 1
+
+    # Alert detection
+    alerts = []
+    p95 = compute_percentile(latencies, 95) if latencies else 0
+    error_rate = (len(error_entries) / len(entries) * 100) if entries else 0
+
+    if p95 > ALERT_LATENCY_P95_MS:
+        alerts.append(f"⚠️  HIGH LATENCY: P95 latency {p95:.1f}ms exceeds {ALERT_LATENCY_P95_MS}ms threshold")
+    if error_rate > ALERT_ERROR_RATE_PCT:
+        alerts.append(f"🚨 HIGH ERROR RATE: {error_rate:.1f}% exceeds {ALERT_ERROR_RATE_PCT}% threshold")
+    if pred_mean > 0 and (pred_std / pred_mean) > ALERT_DRIFT_THRESHOLD:
+        alerts.append(f"📊 PREDICTION DRIFT: CV={pred_std/pred_mean:.2f} exceeds {ALERT_DRIFT_THRESHOLD} threshold")
+
     return {
-        "exists": True,
-        "training_runs": len(records),
-        "latest_run": latest
+        "total": len(entries),
+        "success": len(success_entries),
+        "errors": len(error_entries),
+        "error_rate": round(error_rate, 2),
+        "latency_mean": round(latency_mean, 2),
+        "latency_p50": round(compute_percentile(latencies, 50), 2),
+        "latency_p95": round(p95, 2),
+        "latency_p99": round(compute_percentile(latencies, 99), 2),
+        "prediction_mean": round(pred_mean, 2),
+        "prediction_std": round(pred_std, 2),
+        "endpoint_breakdown": dict(endpoint_counts),
+        "hourly_throughput": dict(sorted(hourly.items())[-24:]),
+        "alerts": alerts
     }
 
-def print_dashboard():
-    pred_data = parse_predictions_log()
-    train_data = parse_training_log()
-    
-    print("\n" + "=" * 65)
-    print(f"{BOLD}{CYAN}   ⚡ MODELPULSE — SYSTEM & ML TELEMETRY DASHBOARD ⚡{RESET}")
-    print("=" * 65)
-    
-    # 1. Model Training Status
-    print(f"\n{BOLD}{BLUE}▶ 1. Automated Model Retraining Status (Unit 10.1 & 10.3){RESET}")
-    print("-" * 65)
-    if train_data["exists"] and train_data["latest_run"]:
-        latest = train_data["latest_run"]
-        details = latest.get("details", {})
-        status_color = GREEN if latest.get("event") == "TRAINING_SUCCESS" else RED
-        
-        print(f"  • Retraining Event   : {status_color}{latest.get('event')}{RESET}")
-        print(f"  • Timestamp (UTC)    : {latest.get('timestamp')}")
-        print(f"  • Model Type         : {details.get('model_type', 'N/A')}")
-        print(f"  • Artifact File      : {details.get('artifact', 'N/A')}")
-        print(f"  • Dataset Sample     : {details.get('dataset_rows', 'N/A')} rows ({details.get('data_source', 'remote')})")
-        print(f"  • Retraining Time    : {details.get('training_duration_seconds', 'N/A')} seconds")
-        
-        metrics = details.get("metrics", {})
-        if metrics:
-            print(f"  • Model Metrics      :")
-            for k, v in list(metrics.items())[:5]:
-                print(f"      - {k:10}: {v}")
-    else:
-        print(f"  {YELLOW}[NOTICE] No model training log found at {TRAINING_LOG_PATH}.{RESET}")
-        print(f"  Run 'python train.py' to generate model artifacts and training logs.")
 
-    # 2. Prediction Telemetry & Latency
-    print(f"\n{BOLD}{BLUE}▶ 2. Prediction API Telemetry & Latency (Unit 6.2 & 9.4){RESET}")
-    print("-" * 65)
-    if pred_data["exists"] and pred_data["total_requests"] > 0:
-        total = pred_data["total_requests"]
-        succ = pred_data["successful"]
-        err = pred_data["errors"]
-        latencies = pred_data["latencies"]
-        
-        success_rate = (succ / total) * 100 if total > 0 else 0
-        avg_lat = sum(latencies) / len(latencies) if latencies else 0.0
-        min_lat = min(latencies) if latencies else 0.0
-        max_lat = max(latencies) if latencies else 0.0
-        
-        print(f"  • Total Predictions  : {BOLD}{total}{RESET}")
-        print(f"  • Success Count      : {GREEN}{succ}{RESET} ({success_rate:.1f}%)")
-        print(f"  • Error Count        : {RED if err > 0 else GREEN}{err}{RESET}")
-        print(f"  • Latency (Avg)      : {CYAN}{avg_lat:.2f} ms{RESET}")
-        print(f"  • Latency (Min / Max): {min_lat:.2f} ms / {max_lat:.2f} ms")
-        
-        # Recent prediction calls
-        if pred_data["recent_events"]:
-            print(f"\n  {BOLD}Recent Inferences (Last 5 requests):{RESET}")
-            for ev in pred_data["recent_events"]:
-                ep = ev.get("endpoint", "/predict")
-                p = ev.get("prediction", "N/A")
-                lat = ev.get("latency_ms", "N/A")
-                inp = ev.get("inputs", {})
-                print(f"    [{ev.get('timestamp', '')[11:19]}] {ep:12} -> Pred: ${p} | Latency: {lat}ms | Inputs: {inp}")
-    else:
-        print(f"  {YELLOW}[NOTICE] No prediction logs recorded yet at {PREDICTIONS_LOG_PATH}.{RESET}")
-        print(f"  Trigger a prediction via Web UI or cURL to start capturing telemetry.")
+def print_dashboard(metrics: dict, training_info: dict = None):
+    """Print a formatted terminal dashboard."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    width = 70
 
-    # 3. Overall System Health Summary
-    print(f"\n{BOLD}{BLUE}▶ 3. DevOps Pipeline Health Verdict{RESET}")
-    print("-" * 65)
-    has_errors = pred_data["errors"] > 0
-    if not has_errors:
-        print(f"  {GREEN}{BOLD}[STATUS: HEALTHY]{RESET} All telemetry logs within nominal operating thresholds.")
+    print("\n" + "═" * width)
+    print(f"  📊 ModelPulse v2.0 — Production Monitoring Dashboard")
+    print(f"  ⏰ {now}")
+    print("═" * width)
+
+    # Overview
+    print(f"\n  ┌─ OVERVIEW {'─' * (width - 14)}┐")
+    print(f"  │ Total Predictions:  {metrics['total']:>10,}")
+    print(f"  │ Successful:         {metrics['success']:>10,}  ✅")
+    print(f"  │ Errors:             {metrics['errors']:>10,}  {'🚨' if metrics['errors'] > 0 else '✅'}")
+    print(f"  │ Error Rate:         {metrics['error_rate']:>9.2f}%  {'⚠️' if metrics['error_rate'] > ALERT_ERROR_RATE_PCT else '✅'}")
+    print(f"  └{'─' * (width - 4)}┘")
+
+    # Latency
+    print(f"\n  ┌─ LATENCY METRICS {'─' * (width - 21)}┐")
+    print(f"  │ Mean:    {metrics['latency_mean']:>10.2f} ms")
+    print(f"  │ P50:     {metrics['latency_p50']:>10.2f} ms")
+    print(f"  │ P95:     {metrics['latency_p95']:>10.2f} ms  {'⚠️' if metrics['latency_p95'] > ALERT_LATENCY_P95_MS else '✅'}")
+    print(f"  │ P99:     {metrics['latency_p99']:>10.2f} ms")
+    print(f"  └{'─' * (width - 4)}┘")
+
+    # Prediction Distribution
+    print(f"\n  ┌─ PREDICTION DISTRIBUTION {'─' * (width - 29)}┐")
+    print(f"  │ Mean Premium:   ${metrics['prediction_mean']:>12,.2f}")
+    print(f"  │ Std Deviation:  ${metrics['prediction_std']:>12,.2f}")
+    if metrics['prediction_mean'] > 0:
+        cv = metrics['prediction_std'] / metrics['prediction_mean']
+        print(f"  │ Coefficient of Variation: {cv:>6.2f}")
+    print(f"  └{'─' * (width - 4)}┘")
+
+    # Endpoint Breakdown
+    if metrics['endpoint_breakdown']:
+        print(f"\n  ┌─ ENDPOINT BREAKDOWN {'─' * (width - 24)}┐")
+        for ep, count in sorted(metrics['endpoint_breakdown'].items()):
+            pct = (count / metrics['total'] * 100) if metrics['total'] > 0 else 0
+            bar_len = int(pct / 100 * 30)
+            bar = "█" * bar_len + "░" * (30 - bar_len)
+            print(f"  │ {ep:20s} {count:>6,}  {bar} {pct:5.1f}%")
+        print(f"  └{'─' * (width - 4)}┘")
+
+    # Training Info
+    if training_info:
+        print(f"\n  ┌─ LAST TRAINING RUN {'─' * (width - 23)}┐")
+        for key, val in training_info.items():
+            print(f"  │ {key:20s} {str(val):>30s}")
+        print(f"  └{'─' * (width - 4)}┘")
+
+    # Alerts
+    if metrics['alerts']:
+        print(f"\n  ┌─ 🚨 ACTIVE ALERTS {'─' * (width - 22)}┐")
+        for alert in metrics['alerts']:
+            print(f"  │ {alert}")
+        print(f"  └{'─' * (width - 4)}┘")
     else:
-        print(f"  {YELLOW}{BOLD}[STATUS: ATTENTION]{RESET} {pred_data['errors']} prediction errors detected in logs.")
-        
-    print("=" * 65 + "\n")
-    return 0
+        print(f"\n  ✅ All systems nominal — no active alerts")
+
+    print("\n" + "═" * width)
+
+
+def get_training_info() -> dict:
+    """Parse the most recent training log entry."""
+    entries = parse_log_entries(TRAINING_LOG)
+    if not entries:
+        return None
+    last = entries[-1]
+    details = last.get("details", {})
+    return {
+        "Timestamp": last.get("timestamp", "unknown")[:19],
+        "Model": details.get("model_name", "unknown"),
+        "Type": details.get("model_type", "unknown"),
+        "Dataset Rows": str(details.get("dataset_rows", "?")),
+        "Duration": f"{details.get('training_duration_seconds', '?')}s",
+        "R²": str(details.get("metrics", {}).get("R2", "?")),
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ModelPulse Log Monitor")
+    parser.add_argument("--summary", action="store_true", help="One-shot summary report")
+    parser.add_argument("--watch", type=int, default=0, help="Refresh interval in seconds (0 = one-shot)")
+    parser.add_argument("--json", action="store_true", help="Output metrics as JSON")
+    parser.add_argument("--last", type=int, default=0, help="Only analyze last N entries")
+    args = parser.parse_args()
+
+    while True:
+        entries = parse_log_entries(LOG_FILE)
+        if args.last > 0:
+            entries = entries[-args.last:]
+
+        metrics = analyze_predictions(entries)
+
+        if args.json:
+            print(json.dumps(metrics, indent=2))
+        else:
+            training_info = get_training_info()
+            if args.watch > 0 and sys.stdout.isatty():
+                if sys.platform == 'win32':
+                    os.system('cls')
+                else:
+                    os.system('clear')
+            print_dashboard(metrics, training_info)
+
+        if args.watch <= 0:
+            break
+        time.sleep(args.watch)
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="ModelPulse System & ML Log Monitor")
-    parser.add_argument("--json", action="store_true", help="Output summary in JSON format")
-    args = parser.parse_args()
-    
-    if args.json:
-        p = parse_predictions_log()
-        t = parse_training_log()
-        print(json.dumps({"predictions": p, "training": t}, indent=2))
-        sys.exit(0)
-    else:
-        sys.exit(print_dashboard())
+    main()

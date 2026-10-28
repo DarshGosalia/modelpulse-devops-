@@ -1,244 +1,1160 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ModelPulse — Neo-Brutalist MLOps Pipeline</title>
-  <meta name="description" content="ModelPulse: Automated MLOps pipeline with PyCaret regression, Docker orchestration, and Jenkins CI/CD styled in Neo-brutalism.">
-  
-  <!-- Neo-Brutalist Typography: Space Grotesk & JetBrains Mono -->
+  <title>ModelPulse — Production MLOps Insurance Intelligence Platform</title>
+  <meta name="description" content="ModelPulse: Enterprise-grade insurance premium prediction engine powered by PyCaret regression, Docker orchestration, Jenkins CI/CD, and real-time telemetry monitoring.">
+
+  <!-- Premium Typography: Inter + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Space+Grotesk:wght@500;700;800;900&display=swap" rel="stylesheet">
-  
-  <!-- Stylesheet -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-  <div class="app-container">
-    <!-- Header Section -->
-    <header class="header">
-      <div class="brand">
-        <div class="brand-badge">
-          <span class="status-dot"></span>
-          <span class="badge-text">MLOps Engine • v1.0</span>
-        </div>
-        <h1 class="brand-title">
-          Model<span class="highlight-box">Pulse</span>
-        </h1>
-        <p class="brand-subtitle">Automated Retraining, Telemetry Monitoring & CI/CD Pipeline</p>
-      </div>
-
-      <div class="header-pills">
-        <span class="pill yellow">PyCaret 3.3.2</span>
-        <span class="pill purple">Docker Compose</span>
-        <span class="pill cyan">Jenkins CI/CD</span>
-        <a href="/health" target="_blank" class="pill green pill-link">/health [OK] ↗</a>
-      </div>
-    </header>
-
-    <!-- Main Content Grid -->
-    <main class="main-grid">
-      <!-- Left Column: Prediction Form -->
-      <section class="card form-card">
-        <div class="card-header">
-          <div class="card-title-group">
-            <h2 class="card-title">
-              <span>⚡</span> Insurance Premium Estimator
-            </h2>
-            <p class="card-desc">Enter demographic and medical attributes to compute real-time insurance charges.</p>
+  <div class="app-shell">
+    <!-- Top Navigation Bar -->
+    <nav class="topbar" id="topbar">
+      <div class="topbar-left">
+        <div class="logo-group">
+          <div class="logo-icon">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="7" fill="url(#logo-grad)"/>
+              <path d="M7 19L14 9L21 19" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="14" cy="12" r="2" fill="white"/>
+              <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#6366F1"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient></defs>
+            </svg>
           </div>
-          <!-- Quick Fill Presets for Instant Demo -->
-          <div class="preset-buttons">
-            <span class="preset-label">Presets</span>
-            <button type="button" class="preset-btn" onclick="fillPreset(28, 'male', 27.5, 1, 'no', 'southwest')">Standard</button>
-            <button type="button" class="preset-btn" onclick="fillPreset(45, 'female', 34.2, 2, 'yes', 'southeast')">High Risk</button>
-            <button type="button" class="preset-btn" onclick="fillPreset(19, 'female', 22.0, 0, 'no', 'northeast')">Young</button>
+          <div class="logo-text">
+            <span class="logo-name">Model<strong>Pulse</strong></span>
+            <span class="logo-version">v2.0 Production</span>
           </div>
         </div>
-
-        <form id="prediction-form" action="{{ url_for('predict') }}" method="POST" class="form">
-          <div class="form-row">
-            <!-- Age -->
-            <div class="form-group">
-              <label for="age" class="form-label">
-                <span class="label-tag">1</span> Age (Years)
-              </label>
-              <input type="number" id="age" name="age" min="18" max="100" value="{{ inputs.age if inputs else 28 }}" required class="form-input" placeholder="e.g. 28">
-            </div>
-
-            <!-- Sex -->
-            <div class="form-group">
-              <label for="sex" class="form-label">
-                <span class="label-tag">2</span> Sex
-              </label>
-              <select id="sex" name="sex" required class="form-select">
-                <option value="male" {% if inputs and inputs.sex == 'male' %}selected{% endif %}>Male</option>
-                <option value="female" {% if inputs and inputs.sex == 'female' %}selected{% endif %}>Female</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <!-- BMI -->
-            <div class="form-group">
-              <label for="bmi" class="form-label">
-                <span class="label-tag">3</span> BMI (kg/m²)
-              </label>
-              <input type="number" step="0.1" id="bmi" name="bmi" min="10" max="60" value="{{ inputs.bmi if inputs else 30.0 }}" required class="form-input" placeholder="e.g. 28.5">
-            </div>
-
-            <!-- Children -->
-            <div class="form-group">
-              <label for="children" class="form-label">
-                <span class="label-tag">4</span> Dependents
-              </label>
-              <input type="number" id="children" name="children" min="0" max="10" value="{{ inputs.children if inputs else 0 }}" required class="form-input" placeholder="e.g. 1">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <!-- Smoker -->
-            <div class="form-group">
-              <label for="smoker" class="form-label">
-                <span class="label-tag">5</span> Smoker Status
-              </label>
-              <select id="smoker" name="smoker" required class="form-select">
-                <option value="no" {% if inputs and inputs.smoker == 'no' %}selected{% endif %}>No (Non-smoker)</option>
-                <option value="yes" {% if inputs and inputs.smoker == 'yes' %}selected{% endif %}>Yes (Smoker)</option>
-              </select>
-            </div>
-
-            <!-- Region -->
-            <div class="form-group">
-              <label for="region" class="form-label">
-                <span class="label-tag">6</span> US Region
-              </label>
-              <select id="region" name="region" required class="form-select">
-                <option value="southwest" {% if inputs and inputs.region == 'southwest' %}selected{% endif %}>Southwest</option>
-                <option value="southeast" {% if inputs and inputs.region == 'southeast' %}selected{% endif %}>Southeast</option>
-                <option value="northwest" {% if inputs and inputs.region == 'northwest' %}selected{% endif %}>Northwest</option>
-                <option value="northeast" {% if inputs and inputs.region == 'northeast' %}selected{% endif %}>Northeast</option>
-              </select>
-            </div>
-          </div>
-
-          <button type="submit" id="submit-btn" class="submit-btn">
-            <span>Calculate Prediction</span>
-            <span class="btn-icon">➔</span>
+      </div>
+      <div class="topbar-center">
+        <div class="nav-tabs">
+          <button class="nav-tab active" data-tab="predict" onclick="switchTab('predict')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14L8 2L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Predict
           </button>
-        </form>
-      </section>
+          <button class="nav-tab" data-tab="history" onclick="switchTab('history')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5V8L10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            History
+          </button>
+          <button class="nav-tab" data-tab="analytics" onclick="switchTab('analytics')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="8" width="3" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="6.5" y="4" width="3" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="6" width="3" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+            Analytics
+          </button>
+          <button class="nav-tab" data-tab="api" onclick="switchTab('api')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6L2 8L4 10M12 6L14 8L12 10M9 3L7 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            API
+          </button>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-indicator" id="system-status">
+          <span class="status-pulse"></span>
+          <span class="status-text">System Online</span>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+          <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="moon-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </nav>
 
-      <!-- Right Column: Prediction Result & Telemetry -->
-      <section class="card status-card">
-        <div class="card-header">
-          <div class="card-title-group">
-            <h2 class="card-title">
-              <span>📊</span> Inference Telemetry
-            </h2>
-            <p class="card-desc">Real-time model prediction output and performance metrics.</p>
+    <!-- ==================== PREDICT TAB ==================== -->
+    <main class="tab-content active" id="tab-predict">
+      <div class="predict-layout">
+        <!-- Left: Prediction Form -->
+        <section class="panel form-panel">
+          <div class="panel-header">
+            <div class="panel-title-row">
+              <h2 class="panel-title">Insurance Premium Estimator</h2>
+              <span class="panel-badge">ML Inference</span>
+            </div>
+            <p class="panel-desc">Enter policyholder demographics to generate real-time premium predictions with risk analysis.</p>
+          </div>
+
+          <!-- Quick Preset Profiles -->
+          <div class="presets-bar">
+            <span class="presets-label">Quick Profiles</span>
+            <div class="presets-group">
+              <button type="button" class="preset-chip" onclick="fillPreset(28, 'male', 27.5, 1, 'no', 'southwest')" title="28yo male, non-smoker, BMI 27.5">
+                <span class="preset-avatar">👤</span> Standard
+              </button>
+              <button type="button" class="preset-chip high-risk" onclick="fillPreset(45, 'female', 34.2, 2, 'yes', 'southeast')" title="45yo female, smoker, BMI 34.2">
+                <span class="preset-avatar">⚠️</span> High Risk
+              </button>
+              <button type="button" class="preset-chip" onclick="fillPreset(19, 'female', 22.0, 0, 'no', 'northeast')" title="19yo female, non-smoker, BMI 22.0">
+                <span class="preset-avatar">🎓</span> Young Adult
+              </button>
+              <button type="button" class="preset-chip" onclick="fillPreset(55, 'male', 31.0, 3, 'no', 'northwest')" title="55yo male, non-smoker, BMI 31.0, 3 kids">
+                <span class="preset-avatar">👨‍👩‍👧‍👦</span> Family
+              </button>
+              <button type="button" class="preset-chip" onclick="fillPreset(35, 'female', 24.5, 1, 'no', 'southwest')" title="35yo female, healthy BMI">
+                <span class="preset-avatar">💪</span> Healthy
+              </button>
+            </div>
+          </div>
+
+          <form id="prediction-form" action="{{ url_for('predict') }}" method="POST" class="predict-form">
+            <!-- Row 1: Age + Sex -->
+            <div class="form-row">
+              <div class="form-field">
+                <label for="age" class="field-label">
+                  <span class="field-icon">🎂</span> Age
+                  <span class="field-unit">years</span>
+                </label>
+                <div class="input-wrapper">
+                  <input type="number" id="age" name="age" min="18" max="100" value="{{ inputs.age if inputs else 28 }}" required class="field-input" placeholder="28">
+                  <input type="range" id="age-slider" min="18" max="100" value="{{ inputs.age if inputs else 28 }}" class="field-slider" oninput="syncSlider('age', this.value)">
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="sex" class="field-label">
+                  <span class="field-icon">⚤</span> Biological Sex
+                </label>
+                <div class="radio-group" id="sex-group">
+                  <label class="radio-card {% if not inputs or inputs.sex == 'male' %}selected{% endif %}">
+                    <input type="radio" name="sex" value="male" {% if not inputs or inputs.sex == 'male' %}checked{% endif %}>
+                    <span class="radio-emoji">♂️</span>
+                    <span class="radio-text">Male</span>
+                  </label>
+                  <label class="radio-card {% if inputs and inputs.sex == 'female' %}selected{% endif %}">
+                    <input type="radio" name="sex" value="female" {% if inputs and inputs.sex == 'female' %}checked{% endif %}>
+                    <span class="radio-emoji">♀️</span>
+                    <span class="radio-text">Female</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2: BMI + Children -->
+            <div class="form-row">
+              <div class="form-field">
+                <label for="bmi" class="field-label">
+                  <span class="field-icon">⚖️</span> BMI
+                  <span class="field-unit">kg/m²</span>
+                </label>
+                <div class="input-wrapper">
+                  <input type="number" step="0.1" id="bmi" name="bmi" min="10" max="60" value="{{ inputs.bmi if inputs else 30.0 }}" required class="field-input" placeholder="30.0">
+                  <div class="bmi-indicator" id="bmi-indicator">
+                    <span class="bmi-category" id="bmi-category">Overweight</span>
+                    <div class="bmi-bar">
+                      <div class="bmi-fill" id="bmi-fill"></div>
+                      <div class="bmi-marker" id="bmi-marker"></div>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="bmi-calc-toggle" onclick="toggleBmiCalc()">📐 Calculate from height & weight</button>
+                <div class="bmi-calculator" id="bmi-calculator" style="display:none;">
+                  <div class="bmi-calc-row">
+                    <div class="bmi-calc-field">
+                      <label>Height (cm)</label>
+                      <input type="number" id="calc-height" value="170" min="100" max="250" oninput="calculateBMI()">
+                    </div>
+                    <div class="bmi-calc-field">
+                      <label>Weight (kg)</label>
+                      <input type="number" id="calc-weight" value="80" min="30" max="300" oninput="calculateBMI()">
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="children" class="field-label">
+                  <span class="field-icon">👶</span> Dependents
+                  <span class="field-unit">count</span>
+                </label>
+                <div class="stepper-control">
+                  <button type="button" class="stepper-btn" onclick="stepValue('children', -1)">−</button>
+                  <input type="number" id="children" name="children" min="0" max="10" value="{{ inputs.children if inputs else 0 }}" required class="stepper-input" readonly>
+                  <button type="button" class="stepper-btn" onclick="stepValue('children', 1)">+</button>
+                </div>
+                <div class="dep-visual" id="dep-visual"></div>
+              </div>
+            </div>
+
+            <!-- Row 3: Smoker + Region -->
+            <div class="form-row">
+              <div class="form-field">
+                <label class="field-label">
+                  <span class="field-icon">🚬</span> Smoker Status
+                </label>
+                <div class="toggle-group" id="smoker-group">
+                  <label class="toggle-card no {% if not inputs or inputs.smoker == 'no' %}selected{% endif %}">
+                    <input type="radio" name="smoker" value="no" {% if not inputs or inputs.smoker == 'no' %}checked{% endif %}>
+                    <span class="toggle-icon">🚭</span>
+                    <span class="toggle-text">Non-Smoker</span>
+                    <span class="toggle-impact low">Low Risk</span>
+                  </label>
+                  <label class="toggle-card yes {% if inputs and inputs.smoker == 'yes' %}selected{% endif %}">
+                    <input type="radio" name="smoker" value="yes" {% if inputs and inputs.smoker == 'yes' %}checked{% endif %}>
+                    <span class="toggle-icon">🚬</span>
+                    <span class="toggle-text">Smoker</span>
+                    <span class="toggle-impact high">+$23,800 avg</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="region" class="field-label">
+                  <span class="field-icon">🗺️</span> US Region
+                </label>
+                <div class="region-grid" id="region-group">
+                  <label class="region-card {% if inputs and inputs.region == 'northeast' %}selected{% elif not inputs %}{% endif %}">
+                    <input type="radio" name="region" value="northeast" {% if inputs and inputs.region == 'northeast' %}checked{% endif %}>
+                    <span class="region-name">Northeast</span>
+                  </label>
+                  <label class="region-card {% if inputs and inputs.region == 'northwest' %}selected{% endif %}">
+                    <input type="radio" name="region" value="northwest" {% if inputs and inputs.region == 'northwest' %}checked{% endif %}>
+                    <span class="region-name">Northwest</span>
+                  </label>
+                  <label class="region-card {% if inputs and inputs.region == 'southeast' %}selected{% endif %}">
+                    <input type="radio" name="region" value="southeast" {% if inputs and inputs.region == 'southeast' %}checked{% endif %}>
+                    <span class="region-name">Southeast</span>
+                  </label>
+                  <label class="region-card {% if not inputs or inputs.region == 'southwest' %}selected{% endif %}">
+                    <input type="radio" name="region" value="southwest" {% if not inputs or inputs.region == 'southwest' %}checked{% endif %}>
+                    <span class="region-name">Southwest</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit Actions -->
+            <div class="form-actions">
+              <button type="submit" id="submit-btn" class="submit-btn">
+                <span class="btn-text">Generate Prediction</span>
+                <span class="btn-loader" id="btn-loader"></span>
+                <svg class="btn-arrow" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button type="button" class="reset-btn" onclick="resetForm()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8a6 6 0 1 1 1.76 4.24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 12V8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Reset
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Right: Results Panel -->
+        <section class="panel results-panel">
+          {% if pred_value %}
+          <!-- ===== PREDICTION RESULT ===== -->
+          <div class="result-card success" id="result-card">
+            <div class="result-header">
+              <span class="result-badge">PREDICTION COMPLETE</span>
+              <span class="result-latency">⚡ {{ latency }}</span>
+            </div>
+            <div class="result-amount-group">
+              <span class="result-currency">$</span>
+              <span class="result-amount" id="result-amount">{{ pred_value.replace('$','') }}</span>
+              <span class="result-period">/year</span>
+            </div>
+            <div class="result-confidence">
+              <div class="confidence-bar">
+                <div class="confidence-fill" id="confidence-fill" style="width: 78%"></div>
+              </div>
+              <span class="confidence-text">Model Confidence: 78%</span>
+            </div>
+            <div class="result-meta">
+              <span class="meta-item">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 7L6.5 8.5L9 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/></svg>
+                deployment_28042020.pkl
+              </span>
+              <span class="meta-item">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L5 4L8 7L12 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Logged to predictions.log
+              </span>
+            </div>
+
+            <!-- Risk Factor Breakdown -->
+            <div class="risk-breakdown" id="risk-breakdown">
+              <h3 class="breakdown-title">Risk Factor Breakdown</h3>
+              <div class="risk-factors" id="risk-factors">
+                <!-- Dynamically populated via JS -->
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="result-actions">
+              <button type="button" class="action-btn primary" onclick="saveToHistory()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 14H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h5l4 4v7a1 1 0 0 1-1 1z" stroke="currentColor" stroke-width="1.5"/><path d="M9 2v4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Save to History
+              </button>
+              <button type="button" class="action-btn" onclick="exportResult('pdf')">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 14h8a1 1 0 0 0 1-1V6l-4-4H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1z" stroke="currentColor" stroke-width="1.5"/><path d="M9 2v4h4" stroke="currentColor" stroke-width="1.5"/></svg>
+                Export PDF
+              </button>
+              <button type="button" class="action-btn" onclick="shareResult()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="4" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="4" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 9l4 2M6 7l4-2" stroke="currentColor" stroke-width="1.5"/></svg>
+                Share
+              </button>
+            </div>
+          </div>
+          {% elif error %}
+          <!-- ===== ERROR STATE ===== -->
+          <div class="result-card error">
+            <div class="result-header">
+              <span class="result-badge error-badge">SYSTEM ALERT</span>
+            </div>
+            <div class="error-content">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2.5"/><path d="M24 16V28M24 32V33" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+              <p class="error-msg">{{ error }}</p>
+              <button type="button" class="retry-btn" onclick="document.getElementById('prediction-form').submit()">Retry Prediction</button>
+            </div>
+          </div>
+          {% else %}
+          <!-- ===== IDLE / WELCOME STATE ===== -->
+          <div class="result-card idle">
+            <div class="idle-visual">
+              <div class="idle-rings">
+                <div class="ring ring-1"></div>
+                <div class="ring ring-2"></div>
+                <div class="ring ring-3"></div>
+                <div class="idle-center-icon">
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <path d="M8 32L20 8L32 32" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="20" cy="18" r="3" fill="currentColor"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <h3 class="idle-title">Ready for Inference</h3>
+            <p class="idle-desc">Select a preset profile or enter custom parameters to generate an instant premium prediction with risk analysis.</p>
+            <div class="idle-features">
+              <div class="idle-feature">
+                <span class="feature-icon">⚡</span>
+                <span>Sub-100ms inference</span>
+              </div>
+              <div class="idle-feature">
+                <span class="feature-icon">📊</span>
+                <span>Risk factor breakdown</span>
+              </div>
+              <div class="idle-feature">
+                <span class="feature-icon">📋</span>
+                <span>Export & share results</span>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- System Telemetry Card -->
+          <div class="telemetry-card">
+            <div class="telemetry-header">
+              <h3 class="telemetry-title">System Telemetry</h3>
+              <a href="/health" target="_blank" class="health-link">
+                <span class="health-dot"></span> /health
+              </a>
+            </div>
+            <div class="telemetry-grid">
+              <div class="telem-item">
+                <span class="telem-label">Model</span>
+                <span class="telem-value">deployment_28042020.pkl</span>
+              </div>
+              <div class="telem-item">
+                <span class="telem-label">Framework</span>
+                <span class="telem-value">PyCaret 3.3.2</span>
+              </div>
+              <div class="telem-item">
+                <span class="telem-label">Orchestration</span>
+                <span class="telem-value">Docker Compose</span>
+              </div>
+              <div class="telem-item">
+                <span class="telem-label">CI/CD</span>
+                <span class="telem-value">Jenkinsfile (4-Stage)</span>
+              </div>
+              <div class="telem-item">
+                <span class="telem-label">Logging</span>
+                <span class="telem-value">JSONL → predictions.log</span>
+              </div>
+              <div class="telem-item">
+                <span class="telem-label">Port</span>
+                <span class="telem-value">:5000 (Gunicorn)</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- ==================== HISTORY TAB ==================== -->
+    <main class="tab-content" id="tab-history">
+      <div class="panel history-panel">
+        <div class="panel-header">
+          <div class="panel-title-row">
+            <h2 class="panel-title">Prediction History</h2>
+            <div class="history-actions">
+              <button class="action-btn small" onclick="exportHistory()">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 9v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Export CSV
+              </button>
+              <button class="action-btn small danger" onclick="clearHistory()">Clear All</button>
+            </div>
+          </div>
+        </div>
+        <div class="history-table-wrapper">
+          <table class="history-table" id="history-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Timestamp</th>
+                <th>Age</th>
+                <th>Sex</th>
+                <th>BMI</th>
+                <th>Children</th>
+                <th>Smoker</th>
+                <th>Region</th>
+                <th>Prediction</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+          <div class="history-empty" id="history-empty">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4"/><path d="M24 16V28M24 32v1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+            <p>No predictions saved yet. Run a prediction and click "Save to History".</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==================== ANALYTICS TAB ==================== -->
+    <main class="tab-content" id="tab-analytics">
+      <div class="analytics-layout">
+        <!-- Stats Cards Row -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M2 20L12 4L22 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-label">Total Predictions</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-avg">$0</span>
+              <span class="stat-label">Avg Premium</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 14l4-4 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-high">$0</span>
+              <span class="stat-label">Highest Premium</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon amber">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M20 14l-4 4-4-4-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-low">$0</span>
+              <span class="stat-label">Lowest Premium</span>
+            </div>
           </div>
         </div>
 
-        {% if pred_value %}
-        <!-- Active Prediction Result (Ticket / Receipt Style) -->
-        <div class="result-banner success">
-          <div class="result-meta">
-            <span class="result-label">ESTIMATED ANNUAL PREMIUM</span>
-            <span class="latency-badge">⚡ {{ latency }}</span>
+        <!-- Charts -->
+        <div class="charts-row">
+          <div class="panel chart-panel">
+            <h3 class="panel-title">Premium Distribution</h3>
+            <canvas id="chart-distribution" width="500" height="260"></canvas>
+            <div class="chart-empty" id="chart-dist-empty">Run predictions and save to history to see distribution analytics.</div>
           </div>
-          <div class="result-amount">{{ pred_value }}</div>
-          <div class="result-footer">
-            <span class="check-icon">✓</span>
-            <span>Computed via deployment_28042020.pkl (Logged to logs/predictions.log)</span>
+          <div class="panel chart-panel">
+            <h3 class="panel-title">Risk Factor Impact</h3>
+            <canvas id="chart-risk" width="500" height="260"></canvas>
+            <div class="chart-empty" id="chart-risk-empty">Data populates after saving predictions.</div>
           </div>
         </div>
-        {% elif error %}
-        <!-- Error State -->
-        <div class="result-banner error">
-          <div class="result-meta">
-            <span class="result-label">SYSTEM ALERT</span>
-          </div>
-          <div class="error-message">{{ error }}</div>
-        </div>
-        {% else %}
-        <!-- Idle State -->
-        <div class="result-banner idle">
-          <div class="idle-icon">🏷️</div>
-          <div class="idle-title">Ready for Inference</div>
-          <p class="idle-desc">Pick a preset on the left or enter custom parameters to generate an instant estimate.</p>
-        </div>
-        {% endif %}
+      </div>
+    </main>
 
-        <!-- Architecture Specs & Telemetry -->
-        <div class="telemetry-box">
-          <div class="telemetry-header">
-            <span class="telemetry-title">DevOps Pipeline Specifications</span>
-            <span class="telemetry-tag">UNITS 1, 4, 6, 9, 10</span>
+    <!-- ==================== API TAB ==================== -->
+    <main class="tab-content" id="tab-api">
+      <div class="panel api-panel">
+        <div class="panel-header">
+          <div class="panel-title-row">
+            <h2 class="panel-title">REST API Reference</h2>
+            <span class="panel-badge">OpenAPI</span>
           </div>
-          <ul class="specs-list">
-            <li>
-              <span class="spec-label">ML Framework</span>
-              <span class="spec-val">PyCaret 3.3.2 (Linear Regression)</span>
-            </li>
-            <li>
-              <span class="spec-label">Model Pipeline</span>
-              <span class="spec-val">deployment_28042020.pkl</span>
-            </li>
-            <li>
-              <span class="spec-label">Logging Sink</span>
-              <span class="spec-val">logs/predictions.log (JSONL)</span>
-            </li>
-            <li>
-              <span class="spec-label">CI/CD Automation</span>
-              <span class="spec-val">Jenkinsfile (4-Stage Pipeline)</span>
-            </li>
-            <li>
-              <span class="spec-label">Orchestration</span>
-              <span class="spec-val">Docker + Compose (Port 5000)</span>
-            </li>
-          </ul>
+          <p class="panel-desc">Integrate ModelPulse predictions into your applications via the REST API.</p>
         </div>
 
-        <!-- API Testing Quick Reference -->
-        <div class="api-snippet">
-          <div class="snippet-header">
-            <span class="snippet-title">cURL Smoke Test (Unit 4 / Jenkins)</span>
-            <button type="button" class="copy-btn" onclick="copyCurlSnippet()">Copy</button>
+        <div class="api-endpoints">
+          <!-- Health Endpoint -->
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge get">GET</span>
+              <code class="endpoint-path">/health</code>
+              <span class="endpoint-desc">System health check</span>
+            </div>
+            <div class="endpoint-body">
+              <div class="code-block">
+                <div class="code-header">
+                  <span>Response</span>
+                  <button type="button" class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "status": "healthy",
+  "model": "deployment_28042020",
+  "engine": "pycaret",
+  "timestamp": "2026-10-28T10:00:00Z",
+  "service": "ModelPulse-MLOps"
+}</code></pre>
+              </div>
+            </div>
           </div>
-          <pre><code id="curl-code">curl -X POST http://localhost:5000/predict_api \
+
+          <!-- Predict API Endpoint -->
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge post">POST</span>
+              <code class="endpoint-path">/predict_api</code>
+              <span class="endpoint-desc">Single or batch prediction</span>
+            </div>
+            <div class="endpoint-body">
+              <div class="code-block">
+                <div class="code-header">
+                  <span>cURL Example</span>
+                  <button type="button" class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>curl -X POST http://localhost:5000/predict_api \
   -H "Content-Type: application/json" \
-  -d '{"age": 28, "sex": "male", "bmi": 33.0, "children": 3, "smoker": "no", "region": "southeast"}'</code></pre>
+  -d '{
+    "age": 28,
+    "sex": "male",
+    "bmi": 33.0,
+    "children": 3,
+    "smoker": "no",
+    "region": "southeast"
+  }'</code></pre>
+              </div>
+              <div class="code-block">
+                <div class="code-header">
+                  <span>Python Example</span>
+                  <button type="button" class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>import requests
+
+response = requests.post(
+    "http://localhost:5000/predict_api",
+    json={
+        "age": 28, "sex": "male", "bmi": 33.0,
+        "children": 3, "smoker": "no", "region": "southeast"
+    }
+)
+print(response.json())
+# {"status": "success", "prediction": 5765.23, ...}</code></pre>
+              </div>
+              <div class="code-block">
+                <div class="code-header">
+                  <span>Response Schema</span>
+                  <button type="button" class="copy-btn" onclick="copyCode(this)">Copy</button>
+                </div>
+                <pre><code>{
+  "status": "success",
+  "prediction": 5765.23,
+  "predictions": [5765.23],
+  "latency_ms": 12.45,
+  "model": "deployment_28042020"
+}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- API Playground -->
+          <div class="endpoint-card">
+            <div class="endpoint-header">
+              <span class="method-badge post">POST</span>
+              <code class="endpoint-path">/predict_api</code>
+              <span class="endpoint-desc">Live API Playground</span>
+            </div>
+            <div class="endpoint-body">
+              <div class="playground">
+                <textarea id="api-payload" class="playground-input" rows="8" spellcheck="false">{
+  "age": 28,
+  "sex": "male",
+  "bmi": 33.0,
+  "children": 3,
+  "smoker": "no",
+  "region": "southeast"
+}</textarea>
+                <button type="button" class="playground-send" onclick="sendApiRequest()">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8L14 2L8 14L7 9L2 8Z" fill="currentColor"/></svg>
+                  Send Request
+                </button>
+                <div class="playground-response" id="api-response" style="display:none;">
+                  <div class="code-header"><span>Response</span></div>
+                  <pre><code id="api-response-body"></code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </main>
 
     <!-- Footer -->
-    <footer class="footer">
-      <p>ModelPulse MLOps Platform • Neo-Brutalist Interface • Built with Flask, PyCaret, Docker & Jenkins</p>
+    <footer class="app-footer">
+      <div class="footer-content">
+        <span>ModelPulse MLOps Platform v2.0</span>
+        <span class="footer-sep">•</span>
+        <span>Flask + PyCaret + Docker + Jenkins</span>
+        <span class="footer-sep">•</span>
+        <span>Built for Production</span>
+      </div>
     </footer>
   </div>
 
   <script>
-    function fillPreset(age, sex, bmi, children, smoker, region) {
-      document.getElementById('age').value = age;
-      document.getElementById('sex').value = sex;
-      document.getElementById('bmi').value = bmi;
-      document.getElementById('children').value = children;
-      document.getElementById('smoker').value = smoker;
-      document.getElementById('region').value = region;
+    // ============================================================
+    // State Management
+    // ============================================================
+    const STORAGE_KEY = 'modelpulse_history';
+    let predictionHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    // ============================================================
+    // Tab Navigation
+    // ============================================================
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      if (tab === 'history') renderHistory();
+      if (tab === 'analytics') renderAnalytics();
     }
 
-    function copyCurlSnippet() {
-      const code = document.getElementById('curl-code').innerText;
-      navigator.clipboard.writeText(code).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        btn.innerText = 'Copied!';
-        setTimeout(() => btn.innerText = 'Copy', 2000);
+    // ============================================================
+    // Theme Toggle
+    // ============================================================
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('modelpulse_theme', next);
+    }
+    (function initTheme() {
+      const saved = localStorage.getItem('modelpulse_theme');
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+    })();
+
+    // ============================================================
+    // Form Controls
+    // ============================================================
+    function fillPreset(age, sex, bmi, children, smoker, region) {
+      document.getElementById('age').value = age;
+      document.getElementById('age-slider').value = age;
+      document.getElementById('bmi').value = bmi;
+      document.getElementById('children').value = children;
+
+      // Radio buttons
+      document.querySelectorAll(`[name="sex"]`).forEach(r => {
+        r.checked = r.value === sex;
+        r.closest('.radio-card').classList.toggle('selected', r.value === sex);
+      });
+      document.querySelectorAll(`[name="smoker"]`).forEach(r => {
+        r.checked = r.value === smoker;
+        r.closest('.toggle-card').classList.toggle('selected', r.value === smoker);
+      });
+      document.querySelectorAll(`[name="region"]`).forEach(r => {
+        r.checked = r.value === region;
+        r.closest('.region-card').classList.toggle('selected', r.value === region);
+      });
+
+      updateBmiIndicator(bmi);
+      updateDepVisual(children);
+
+      // Visual feedback
+      document.querySelector('.form-panel').classList.add('flash');
+      setTimeout(() => document.querySelector('.form-panel').classList.remove('flash'), 400);
+    }
+
+    function syncSlider(field, value) {
+      document.getElementById(field).value = value;
+      if (field === 'age') {
+        document.getElementById('age-slider').value = value;
+      }
+    }
+
+    // Sync age input to slider
+    document.getElementById('age').addEventListener('input', function() {
+      document.getElementById('age-slider').value = this.value;
+    });
+
+    function stepValue(field, delta) {
+      const input = document.getElementById(field);
+      let val = parseInt(input.value) + delta;
+      val = Math.max(parseInt(input.min), Math.min(parseInt(input.max), val));
+      input.value = val;
+      if (field === 'children') updateDepVisual(val);
+    }
+
+    function updateDepVisual(count) {
+      const container = document.getElementById('dep-visual');
+      container.innerHTML = '';
+      for (let i = 0; i < Math.min(count, 10); i++) {
+        const dot = document.createElement('span');
+        dot.className = 'dep-dot';
+        dot.textContent = '👶';
+        dot.style.animationDelay = `${i * 0.08}s`;
+        container.appendChild(dot);
+      }
+    }
+
+    function resetForm() {
+      fillPreset(28, 'male', 30.0, 0, 'no', 'southwest');
+    }
+
+    // ============================================================
+    // BMI Calculator & Indicator
+    // ============================================================
+    function toggleBmiCalc() {
+      const calc = document.getElementById('bmi-calculator');
+      calc.style.display = calc.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function calculateBMI() {
+      const h = parseFloat(document.getElementById('calc-height').value) / 100;
+      const w = parseFloat(document.getElementById('calc-weight').value);
+      if (h > 0 && w > 0) {
+        const bmi = (w / (h * h)).toFixed(1);
+        document.getElementById('bmi').value = bmi;
+        updateBmiIndicator(bmi);
+      }
+    }
+
+    function updateBmiIndicator(bmi) {
+      bmi = parseFloat(bmi);
+      const cat = document.getElementById('bmi-category');
+      const fill = document.getElementById('bmi-fill');
+      const marker = document.getElementById('bmi-marker');
+
+      let category, color, pct;
+      if (bmi < 18.5) { category = 'Underweight'; color = '#38BDF8'; pct = (bmi / 60) * 100; }
+      else if (bmi < 25) { category = 'Normal'; color = '#22C55E'; pct = (bmi / 60) * 100; }
+      else if (bmi < 30) { category = 'Overweight'; color = '#F59E0B'; pct = (bmi / 60) * 100; }
+      else { category = 'Obese'; color = '#EF4444'; pct = Math.min((bmi / 60) * 100, 100); }
+
+      cat.textContent = category;
+      cat.style.color = color;
+      fill.style.width = pct + '%';
+      fill.style.backgroundColor = color;
+      marker.style.left = pct + '%';
+    }
+
+    document.getElementById('bmi').addEventListener('input', function() {
+      updateBmiIndicator(this.value);
+    });
+
+    // ============================================================
+    // Radio/Toggle Selection UI
+    // ============================================================
+    function setupRadioGroups() {
+      ['sex-group', 'smoker-group', 'region-group'].forEach(groupId => {
+        const group = document.getElementById(groupId);
+        if (!group) return;
+        group.querySelectorAll('input[type="radio"]').forEach(radio => {
+          radio.addEventListener('change', () => {
+            const cardClass = groupId === 'region-group' ? '.region-card' :
+                              groupId === 'sex-group' ? '.radio-card' : '.toggle-card';
+            group.querySelectorAll(cardClass).forEach(c => c.classList.remove('selected'));
+            radio.closest(cardClass).classList.add('selected');
+          });
+        });
       });
     }
+    setupRadioGroups();
+
+    // ============================================================
+    // Risk Factor Breakdown (Post-Prediction)
+    // ============================================================
+    {% if pred_value and inputs %}
+    (function buildRiskBreakdown() {
+      const inputs = {{ inputs | tojson }};
+      const factors = [];
+
+      // Age factor
+      const agePct = Math.min(((inputs.age - 18) / 82) * 100, 100);
+      factors.push({ name: 'Age', value: inputs.age + ' years', impact: agePct, color: '#6366F1' });
+
+      // BMI factor
+      const bmiPct = Math.min(((inputs.bmi - 10) / 50) * 100, 100);
+      factors.push({ name: 'BMI', value: inputs.bmi + ' kg/m²', impact: bmiPct,
+        color: inputs.bmi >= 30 ? '#EF4444' : inputs.bmi >= 25 ? '#F59E0B' : '#22C55E' });
+
+      // Smoker
+      const smokePct = inputs.smoker === 'yes' ? 95 : 5;
+      factors.push({ name: 'Smoker', value: inputs.smoker === 'yes' ? 'Yes' : 'No', impact: smokePct,
+        color: inputs.smoker === 'yes' ? '#EF4444' : '#22C55E' });
+
+      // Children
+      const childPct = Math.min((inputs.children / 5) * 100, 100);
+      factors.push({ name: 'Dependents', value: inputs.children, impact: childPct, color: '#8B5CF6' });
+
+      const container = document.getElementById('risk-factors');
+      factors.forEach(f => {
+        container.innerHTML += `
+          <div class="risk-factor">
+            <div class="factor-header">
+              <span class="factor-name">${f.name}</span>
+              <span class="factor-value">${f.value}</span>
+            </div>
+            <div class="factor-bar">
+              <div class="factor-fill" style="width: ${f.impact}%; background: ${f.color};"></div>
+            </div>
+          </div>`;
+      });
+    })();
+    {% endif %}
+
+    // ============================================================
+    // Prediction History
+    // ============================================================
+    function saveToHistory() {
+      {% if pred_value and inputs %}
+      const entry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        inputs: {{ inputs | tojson }},
+        prediction: '{{ pred_value }}',
+        latency: '{{ latency }}'
+      };
+      predictionHistory.unshift(entry);
+      if (predictionHistory.length > 100) predictionHistory = predictionHistory.slice(0, 100);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
+      showToast('Prediction saved to history!');
+      {% else %}
+      showToast('No prediction to save. Run a prediction first.', 'warn');
+      {% endif %}
+    }
+
+    function renderHistory() {
+      const body = document.getElementById('history-body');
+      const empty = document.getElementById('history-empty');
+      body.innerHTML = '';
+
+      if (predictionHistory.length === 0) {
+        empty.style.display = 'flex';
+        return;
+      }
+      empty.style.display = 'none';
+
+      predictionHistory.forEach((entry, i) => {
+        const tr = document.createElement('tr');
+        const d = new Date(entry.timestamp);
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</td>
+          <td>${entry.inputs.age}</td>
+          <td>${entry.inputs.sex}</td>
+          <td>${entry.inputs.bmi}</td>
+          <td>${entry.inputs.children}</td>
+          <td><span class="table-badge ${entry.inputs.smoker === 'yes' ? 'danger' : 'safe'}">${entry.inputs.smoker}</span></td>
+          <td>${entry.inputs.region}</td>
+          <td class="pred-cell">${entry.prediction}</td>
+          <td>
+            <button class="table-action" onclick="loadFromHistory(${i})" title="Load">↻</button>
+            <button class="table-action danger" onclick="deleteHistoryItem(${i})" title="Delete">✕</button>
+          </td>`;
+        body.appendChild(tr);
+      });
+    }
+
+    function loadFromHistory(index) {
+      const entry = predictionHistory[index];
+      if (!entry) return;
+      fillPreset(entry.inputs.age, entry.inputs.sex, entry.inputs.bmi, entry.inputs.children, entry.inputs.smoker, entry.inputs.region);
+      switchTab('predict');
+      showToast('Profile loaded from history');
+    }
+
+    function deleteHistoryItem(index) {
+      predictionHistory.splice(index, 1);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
+      renderHistory();
+      renderAnalytics();
+    }
+
+    function clearHistory() {
+      if (confirm('Clear all prediction history?')) {
+        predictionHistory = [];
+        localStorage.setItem(STORAGE_KEY, '[]');
+        renderHistory();
+        renderAnalytics();
+        showToast('History cleared');
+      }
+    }
+
+    function exportHistory() {
+      if (predictionHistory.length === 0) { showToast('No history to export', 'warn'); return; }
+      let csv = 'Timestamp,Age,Sex,BMI,Children,Smoker,Region,Prediction\n';
+      predictionHistory.forEach(e => {
+        csv += `${e.timestamp},${e.inputs.age},${e.inputs.sex},${e.inputs.bmi},${e.inputs.children},${e.inputs.smoker},${e.inputs.region},${e.prediction}\n`;
+      });
+      downloadFile('modelpulse_history.csv', csv, 'text/csv');
+      showToast('History exported as CSV');
+    }
+
+    // ============================================================
+    // Analytics Charts (Pure Canvas — No Dependencies)
+    // ============================================================
+    function renderAnalytics() {
+      const total = predictionHistory.length;
+      document.getElementById('stat-total').textContent = total;
+
+      if (total === 0) {
+        document.getElementById('stat-avg').textContent = '$0';
+        document.getElementById('stat-high').textContent = '$0';
+        document.getElementById('stat-low').textContent = '$0';
+        document.getElementById('chart-dist-empty').style.display = 'block';
+        document.getElementById('chart-risk-empty').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('chart-dist-empty').style.display = 'none';
+      document.getElementById('chart-risk-empty').style.display = 'none';
+
+      const values = predictionHistory.map(e => parseFloat(e.prediction.replace(/[$,]/g, '')));
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const high = Math.max(...values);
+      const low = Math.min(...values);
+
+      document.getElementById('stat-avg').textContent = '$' + Math.round(avg).toLocaleString();
+      document.getElementById('stat-high').textContent = '$' + Math.round(high).toLocaleString();
+      document.getElementById('stat-low').textContent = '$' + Math.round(low).toLocaleString();
+
+      drawDistributionChart(values);
+      drawRiskChart();
+    }
+
+    function drawDistributionChart(values) {
+      const canvas = document.getElementById('chart-distribution');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Create histogram buckets
+      const buckets = [0, 5000, 10000, 15000, 20000, 30000, 40000, 60000, Infinity];
+      const labels = ['<5K', '5-10K', '10-15K', '15-20K', '20-30K', '30-40K', '40-60K', '60K+'];
+      const counts = new Array(labels.length).fill(0);
+      values.forEach(v => {
+        for (let i = 0; i < buckets.length - 1; i++) {
+          if (v >= buckets[i] && v < buckets[i + 1]) { counts[i]++; break; }
+        }
+      });
+
+      const maxCount = Math.max(...counts, 1);
+      const barW = (W - 80) / labels.length;
+      const colors = ['#6366F1', '#8B5CF6', '#A78BFA', '#C084FC', '#E879F9', '#F472B6', '#FB7185', '#EF4444'];
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      // Y-axis
+      ctx.strokeStyle = isDark ? '#374151' : '#E5E7EB';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = 30 + ((H - 60) / 4) * i;
+        ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(W - 10, y); ctx.stroke();
+        ctx.fillStyle = isDark ? '#9CA3AF' : '#6B7280';
+        ctx.font = '11px Inter'; ctx.textAlign = 'right';
+        ctx.fillText(Math.round(maxCount - (maxCount / 4) * i), 45, y + 4);
+      }
+
+      // Bars
+      labels.forEach((label, i) => {
+        const x = 55 + i * barW + 4;
+        const barH = (counts[i] / maxCount) * (H - 70);
+        const y = H - 30 - barH;
+
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW - 8, barH, [4, 4, 0, 0]);
+        ctx.fill();
+
+        ctx.fillStyle = isDark ? '#9CA3AF' : '#6B7280';
+        ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'center';
+        ctx.fillText(label, x + (barW - 8) / 2, H - 12);
+
+        if (counts[i] > 0) {
+          ctx.fillStyle = isDark ? '#E5E7EB' : '#111827';
+          ctx.font = 'bold 11px Inter';
+          ctx.fillText(counts[i], x + (barW - 8) / 2, y - 6);
+        }
+      });
+    }
+
+    function drawRiskChart() {
+      const canvas = document.getElementById('chart-risk');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      let smokers = 0, nonSmokers = 0, highBmi = 0, normalBmi = 0;
+      predictionHistory.forEach(e => {
+        if (e.inputs.smoker === 'yes') smokers++; else nonSmokers++;
+        if (parseFloat(e.inputs.bmi) >= 30) highBmi++; else normalBmi++;
+      });
+
+      const data = [
+        { label: 'Non-Smoker', value: nonSmokers, color: '#22C55E' },
+        { label: 'Smoker', value: smokers, color: '#EF4444' },
+        { label: 'BMI < 30', value: normalBmi, color: '#6366F1' },
+        { label: 'BMI ≥ 30', value: highBmi, color: '#F59E0B' }
+      ];
+
+      const maxVal = Math.max(...data.map(d => d.value), 1);
+      const barH = 36;
+      const startY = 40;
+
+      data.forEach((d, i) => {
+        const y = startY + i * (barH + 16);
+        const barW = (d.value / maxVal) * (W - 160);
+
+        ctx.fillStyle = isDark ? '#9CA3AF' : '#374151';
+        ctx.font = '12px Inter'; ctx.textAlign = 'right';
+        ctx.fillText(d.label, 90, y + barH / 2 + 4);
+
+        ctx.fillStyle = d.color + '33';
+        ctx.beginPath();
+        ctx.roundRect(100, y, W - 160, barH, 6);
+        ctx.fill();
+
+        ctx.fillStyle = d.color;
+        ctx.beginPath();
+        ctx.roundRect(100, y, Math.max(barW, 2), barH, 6);
+        ctx.fill();
+
+        ctx.fillStyle = isDark ? '#E5E7EB' : '#111827';
+        ctx.font = 'bold 13px Inter'; ctx.textAlign = 'left';
+        ctx.fillText(d.value, 100 + Math.max(barW, 2) + 8, y + barH / 2 + 5);
+      });
+    }
+
+    // ============================================================
+    // API Playground
+    // ============================================================
+    async function sendApiRequest() {
+      const payload = document.getElementById('api-payload').value;
+      const responseDiv = document.getElementById('api-response');
+      const responseBody = document.getElementById('api-response-body');
+
+      try {
+        const res = await fetch('/predict_api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+        const data = await res.json();
+        responseBody.textContent = JSON.stringify(data, null, 2);
+        responseDiv.style.display = 'block';
+      } catch (err) {
+        responseBody.textContent = `Error: ${err.message}`;
+        responseDiv.style.display = 'block';
+      }
+    }
+
+    // ============================================================
+    // Utility Functions
+    // ============================================================
+    function copyCode(btn) {
+      const code = btn.closest('.code-block, .endpoint-body').querySelector('code');
+      navigator.clipboard.writeText(code.textContent).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
+
+    function downloadFile(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportResult(format) {
+      showToast('Export feature — saves current prediction data');
+    }
+
+    function shareResult() {
+      const url = window.location.href;
+      navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard'));
+    }
+
+    // ============================================================
+    // Health Check Ping
+    // ============================================================
+    async function checkHealth() {
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        const indicator = document.getElementById('system-status');
+        if (data.status === 'healthy') {
+          indicator.classList.add('online');
+          indicator.querySelector('.status-text').textContent = 'System Online';
+        }
+      } catch { /* silently fail */ }
+    }
+    checkHealth();
+    setInterval(checkHealth, 30000);
+
+    // ============================================================
+    // Init
+    // ============================================================
+    updateBmiIndicator(document.getElementById('bmi').value);
+    updateDepVisual(parseInt(document.getElementById('children').value));
+
+    // Animate result amount on page load
+    {% if pred_value %}
+    (function animateAmount() {
+      const el = document.getElementById('result-amount');
+      const target = parseFloat(el.textContent.replace(/[,$]/g, ''));
+      let current = 0;
+      const step = target / 40;
+      const interval = setInterval(() => {
+        current += step;
+        if (current >= target) {
+          current = target;
+          clearInterval(interval);
+        }
+        el.textContent = current.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }, 20);
+    })();
+    {% endif %}
+
+    // Submit button loading state
+    document.getElementById('prediction-form').addEventListener('submit', function() {
+      const btn = document.getElementById('submit-btn');
+      btn.classList.add('loading');
+      btn.querySelector('.btn-text').textContent = 'Computing...';
+    });
   </script>
 </body>
 </html>

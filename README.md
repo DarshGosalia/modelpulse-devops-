@@ -156,7 +156,8 @@ curl -X GET http://localhost:5000/health
 }
 ```
 
-### 2. REST API Prediction Request
+### 2. REST API Prediction Request (Single & Batch)
+**Single Record:**
 ```bash
 curl -X POST http://localhost:5000/predict_api \
   -H "Content-Type: application/json" \
@@ -169,22 +170,29 @@ curl -X POST http://localhost:5000/predict_api \
     "region": "southeast"
   }'
 ```
-**Expected Response:**
-```json
-{
-  "latency_ms": 14.25,
-  "model": "deployment_28042020",
-  "prediction": 4449.46,
-  "predictions": [4449.46],
-  "status": "success"
-}
+
+**Batch Inference:**
+```bash
+curl -X POST http://localhost:5000/predict_api \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"age": 25, "sex": "female", "bmi": 24.0, "children": 0, "smoker": "no", "region": "northeast"},
+    {"age": 52, "sex": "male", "bmi": 35.0, "children": 2, "smoker": "yes", "region": "southwest"}
+  ]'
 ```
 
-### 3. Run Telemetry Monitoring Script
+### 3. Real-Time Telemetry & Metrics Endpoints
+- **Metrics Endpoint:** `curl http://localhost:5000/api/metrics`
+  - Returns `total_predictions`, `avg_latency_ms`, `max_latency_ms`, `p95`, `error_rate`, and uptime.
+- **Prediction History:** `curl http://localhost:5000/api/history?limit=25`
+  - Returns recent inference calls with inputs and latency measurements.
+
+### 4. Run Telemetry Monitoring Script
 ```bash
-python monitor_logs.py
+python monitor_logs.py --summary      # Single terminal report
+python monitor_logs.py --watch 10     # Live refreshing dashboard every 10s
 ```
-Outputs an ANSI-colored console dashboard summarizing total predictions, latency percentiles, error rates, and model retraining history.
+Outputs an ANSI-colored console dashboard summarizing total predictions, latency percentiles (P50/P95/P99), error rates, endpoint breakdown, and model retraining history.
 
 ---
 
