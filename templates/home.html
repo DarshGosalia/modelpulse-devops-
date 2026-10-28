@@ -295,23 +295,26 @@
 
         <!-- Right: Results Panel -->
         <section class="panel results-panel">
-          {% if pred_value %}
           <!-- ===== PREDICTION RESULT ===== -->
-          <div class="result-card success" id="result-card">
+          <div class="result-card success" id="result-card" style="display: {% if pred_value %}block{% else %}none{% endif %};">
             <div class="result-header">
               <span class="result-badge">PREDICTION COMPLETE</span>
-              <span class="result-latency">⚡ {{ latency }}</span>
+              <span class="result-latency" id="result-latency">⚡ {{ latency if latency else '12.0 ms' }}</span>
             </div>
             <div class="result-amount-group">
               <span class="result-currency">₹</span>
-              <span class="result-amount" id="result-amount">{{ pred_value.replace('₹','').replace('$','') }}</span>
+              <span class="result-amount" id="result-amount">{{ pred_value.replace('₹','').replace('$','') if pred_value else '0.00' }}</span>
               <span class="result-period">/year</span>
+            </div>
+            <div class="result-monthly-row" style="margin-top: 4px; margin-bottom: 12px; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--text-secondary);">
+              <span>Monthly: </span>
+              <span id="result-monthly" style="color: var(--color-primary); font-weight: 800;">₹0.00</span> / mo
             </div>
             <div class="result-confidence">
               <div class="confidence-bar">
                 <div class="confidence-fill" id="confidence-fill" style="width: 78%"></div>
               </div>
-              <span class="confidence-text">Model Confidence: 78%</span>
+              <span class="confidence-text" id="confidence-text">Model Confidence: 78%</span>
             </div>
             <div class="result-meta">
               <span class="meta-item">
@@ -368,9 +371,9 @@
               </button>
             </div>
           </div>
-          {% elif error %}
+
           <!-- ===== ERROR STATE ===== -->
-          <div class="result-card error">
+          <div class="result-card error" id="result-card-error" style="display: {% if error %}block{% else %}none{% endif %};">
             <div class="result-header">
               <span class="result-badge error-badge">SYSTEM ALERT</span>
             </div>
@@ -379,14 +382,14 @@
                 <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2.5" />
                 <path d="M24 16V28M24 32V33" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
               </svg>
-              <p class="error-msg">{{ error }}</p>
+              <p class="error-msg">{{ error if error else '' }}</p>
               <button type="button" class="retry-btn"
                 onclick="document.getElementById('prediction-form').submit()">Retry Prediction</button>
             </div>
           </div>
-          {% else %}
+
           <!-- ===== IDLE / WELCOME STATE ===== -->
-          <div class="result-card idle">
+          <div class="result-card idle" id="result-card-idle" style="display: {% if pred_value or error %}none{% else %}block{% endif %};">
             <div class="idle-visual">
               <div class="idle-rings">
                 <div class="ring ring-1"></div>
@@ -419,7 +422,6 @@
               </div>
             </div>
           </div>
-          {% endif %}
 
           <!-- System Telemetry Card -->
           <div class="telemetry-card">
@@ -891,10 +893,96 @@ print(response.json())
 
   <script>
     // ============================================================
-    // State Management
+    // State Management & Schema Normalization
     // ============================================================
     const STORAGE_KEY = 'modelpulse_history';
-    let predictionHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    function normalizeHistoryItem(item) {
+      if (!item) return null;
+      const inp = item.inputs || item || {};
+      const age = parseInt(inp.age ?? inp.Age, 10) || 28;
+      const sex = String(inp.sex ?? inp.Sex ?? 'male').toLowerCase().trim();
+      const bmi = parseFloat(inp.bmi ?? inp.BMI) || 24.5;
+      const children = parseInt(inp.children ?? inp.Children ?? inp.dependents, 10) || 0;
+      const smokerStr = String(inp.smoker ?? inp.Smoker ?? 'no').toLowerCase().trim();
+      const smoker = (smokerStr === 'yes' || smokerStr === 'true' || smokerStr === '1' || inp.smoker === true) ? 'yes' : 'no';
+      const regStr = String(inp.region ?? inp.Region ?? 'west').toLowerCase().trim();
+      let region = 'west';
+      if (regStr === 'north' || regStr === 'northeast') region = 'north';
+      else if (regStr === 'south' || regStr === 'southeast') region = 'south';
+      else if (regStr === 'east' || regStr === 'northwest') region = 'east';
+      else if (regStr === 'west' || regStr === 'southwest') region = 'west';
+      else if (regStr.includes('north')) region = 'north';
+      else if (regStr.includes('south')) region = 'south';
+      else if (regStr.includes('east')) region = 'east';
+      else region = 'west';
+
+      let predStr = String(item.prediction || item.predicted_charge || '');
+      if (!predStr || predStr === 'undefined' || predStr === 'null') {
+        predStr = '₹15,000.00';
+      } else if (!predStr.startsWith('₹') && !predStr.startsWith('$')) {
+        const num = parseFloat(predStr.replace(/,/g, ''));
+        predStr = !isNaN(num) ? '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : predStr;
+      }
+
+      return {
+        id: item.id || ('hist_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)),
+        timestamp: item.timestamp || new Date().toISOString(),
+        source: item.source || 'manual',
+        inputs: { age, sex, bmi, children, smoker, region },
+        prediction: predStr,
+        latency: item.latency || '12.0 ms',
+        confidence: item.confidence || 78
+      };
+    }
+
+    let rawHistory = [];
+    try {
+      rawHistory = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      if (!Array.isArray(rawHistory)) rawHistory = [];
+    } catch (e) {
+      rawHistory = [];
+    }
+    let predictionHistory = rawHistory.map(normalizeHistoryItem).filter(Boolean);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory)); } catch (e) {}
+
+    let activePredictionState = {% if pred_value and inputs %}{
+      inputs: {{ inputs | tojson }},
+      prediction: '{{ pred_value }}',
+      latency: '{{ latency if latency else "12.0 ms" }}',
+      confidence: 78
+    }{% else %}null{% endif %};
+
+    // Auto-sync server-rendered prediction into history on first render
+    {% if pred_value and inputs %}
+    (function autoSyncServerPrediction() {
+      const sInput = {{ inputs | tojson }};
+      const sPred = "{{ pred_value }}";
+      const sLatency = "{{ latency if latency else '12.0 ms' }}";
+
+      const isDupe = predictionHistory.length > 0 &&
+        predictionHistory[0].prediction === sPred &&
+        predictionHistory[0].inputs?.age == sInput.age &&
+        predictionHistory[0].inputs?.bmi == sInput.bmi &&
+        predictionHistory[0].inputs?.smoker == sInput.smoker &&
+        predictionHistory[0].inputs?.region == sInput.region;
+
+      if (!isDupe) {
+        const entry = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          source: 'server_predict',
+          inputs: sInput,
+          prediction: sPred,
+          latency: sLatency,
+          confidence: 78
+        };
+        predictionHistory.unshift(entry);
+        if (predictionHistory.length > 500) predictionHistory = predictionHistory.slice(0, 500);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory)); } catch (e) {}
+      }
+    })();
+    {% endif %}
 
     // ============================================================
     // Tab Navigation
@@ -902,8 +990,10 @@ print(response.json())
     function switchTab(tab) {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-      document.getElementById(`tab-${tab}`).classList.add('active');
+      const tabBtn = document.querySelector(`[data-tab="${tab}"]`);
+      if (tabBtn) tabBtn.classList.add('active');
+      const tabEl = document.getElementById(`tab-${tab}`);
+      if (tabEl) tabEl.classList.add('active');
       if (tab === 'history') renderHistory();
       if (tab === 'analytics') renderAnalytics();
     }
@@ -924,7 +1014,7 @@ print(response.json())
     })();
 
     // ============================================================
-    // Form Controls
+    // Form Controls & Preset Loader
     // ============================================================
     function fillPreset(age, sex, bmi, children, smoker, region) {
       // 1. Age
@@ -980,7 +1070,11 @@ print(response.json())
       // 6. Region Radio
       const regStr = String(region || 'west').toLowerCase().trim();
       let normRegion = 'west';
-      if (regStr.includes('north')) normRegion = 'north';
+      if (regStr === 'north' || regStr === 'northeast') normRegion = 'north';
+      else if (regStr === 'south' || regStr === 'southeast') normRegion = 'south';
+      else if (regStr === 'east' || regStr === 'northwest') normRegion = 'east';
+      else if (regStr === 'west' || regStr === 'southwest') normRegion = 'west';
+      else if (regStr.includes('north')) normRegion = 'north';
       else if (regStr.includes('south')) normRegion = 'south';
       else if (regStr.includes('east')) normRegion = 'east';
       else normRegion = 'west';
@@ -1098,39 +1192,55 @@ print(response.json())
     setupRadioGroups();
 
     // ============================================================
-    // Risk Factor Breakdown (Post-Prediction)
+    // Risk Factor Breakdown & Dynamic Prediction Card Sync
     // ============================================================
-    {% if pred_value and inputs %}
-    (function buildRiskBreakdown() {
-      const inputs = {{ inputs | tojson
-    }};
-    const factors = [];
+    function renderRiskFactorBreakdown(inp) {
+      const container = document.getElementById('risk-factors');
+      if (!container || !inp) return;
+      container.innerHTML = '';
 
-    // Age factor
-    const agePct = Math.min(((inputs.age - 18) / 82) * 100, 100);
-    factors.push({ name: 'Age', value: inputs.age + ' years', impact: agePct, color: '#6366F1' });
+      const age = parseInt(inp.age, 10) || 28;
+      const bmi = parseFloat(inp.bmi) || 24.5;
+      const children = parseInt(inp.children, 10) || 0;
+      const smoker = String(inp.smoker || 'no').toLowerCase().trim();
+      const region = String(inp.region || 'west').toLowerCase().trim();
 
-    // BMI factor
-    const bmiPct = Math.min(((inputs.bmi - 10) / 50) * 100, 100);
-    factors.push({
-      name: 'BMI', value: inputs.bmi + ' kg/m²', impact: bmiPct,
-      color: inputs.bmi >= 30 ? '#EF4444' : inputs.bmi >= 25 ? '#F59E0B' : '#22C55E'
-    });
+      const factors = [];
 
-    // Smoker
-    const smokePct = inputs.smoker === 'yes' ? 95 : 5;
-    factors.push({
-      name: 'Smoker', value: inputs.smoker === 'yes' ? 'Yes' : 'No', impact: smokePct,
-      color: inputs.smoker === 'yes' ? '#EF4444' : '#22C55E'
-    });
+      // Age factor
+      const agePct = Math.min(Math.max(((age - 18) / 82) * 100, 8), 100);
+      factors.push({ name: 'Age', value: age + ' years', impact: agePct, color: '#6366F1' });
 
-    // Children
-    const childPct = Math.min((inputs.children / 5) * 100, 100);
-    factors.push({ name: 'Dependents', value: inputs.children, impact: childPct, color: '#8B5CF6' });
+      // BMI factor
+      const bmiPct = Math.min(Math.max(((bmi - 10) / 50) * 100, 10), 100);
+      factors.push({
+        name: 'BMI', value: bmi.toFixed(1) + ' kg/m²', impact: bmiPct,
+        color: bmi >= 30 ? '#EF4444' : bmi >= 25 ? '#F59E0B' : '#22C55E'
+      });
 
-    const container = document.getElementById('risk-factors');
-    factors.forEach(f => {
-      container.innerHTML += `
+      // Smoker factor
+      const isSmoker = smoker === 'yes';
+      factors.push({
+        name: 'Smoker', value: isSmoker ? 'Yes' : 'No', impact: isSmoker ? 95 : 5,
+        color: isSmoker ? '#EF4444' : '#22C55E'
+      });
+
+      // Dependents factor
+      const childPct = Math.min((children / 5) * 100, 100);
+      factors.push({ name: 'Dependents', value: String(children), impact: Math.max(childPct, 8), color: '#8B5CF6' });
+
+      // Region factor
+      let regImpact = 45;
+      if (region.includes('west')) regImpact = 55;
+      else if (region.includes('south')) regImpact = 50;
+      else if (region.includes('north')) regImpact = 40;
+      else if (region.includes('east')) regImpact = 35;
+      factors.push({
+        name: 'Region', value: region.toUpperCase() + ' India', impact: regImpact, color: '#06B6D4'
+      });
+
+      factors.forEach(f => {
+        container.innerHTML += `
           <div class="risk-factor">
             <div class="factor-header">
               <span class="factor-name">${f.name}</span>
@@ -1140,30 +1250,105 @@ print(response.json())
               <div class="factor-fill" style="width: ${f.impact}%; background: ${f.color};"></div>
             </div>
           </div>`;
-    });
-    }) ();
-    {% endif %}
+      });
+    }
+
+    function displayPredictionResult(data, animate = true) {
+      if (!data) return;
+      const cardSuccess = document.getElementById('result-card');
+      const cardIdle = document.getElementById('result-card-idle');
+      const cardError = document.getElementById('result-card-error');
+      if (cardError) cardError.style.display = 'none';
+      if (cardIdle) cardIdle.style.display = 'none';
+      if (cardSuccess) cardSuccess.style.display = 'block';
+
+      const predStr = String(data.prediction || '₹15,000.00');
+      const cleanNumberStr = predStr.replace(/[₹$,\s]/g, '');
+      const targetNum = parseFloat(cleanNumberStr) || 0;
+      const formattedTarget = targetNum.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const amountEl = document.getElementById('result-amount');
+      if (amountEl) {
+        if (animate) {
+          let current = 0;
+          const step = Math.max(targetNum / 25, 1);
+          const interval = setInterval(() => {
+            current += step;
+            if (current >= targetNum) {
+              current = targetNum;
+              clearInterval(interval);
+            }
+            amountEl.textContent = current.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }, 15);
+        } else {
+          amountEl.textContent = formattedTarget;
+        }
+      }
+
+      // Monthly cost
+      const monthlyEl = document.getElementById('result-monthly');
+      if (monthlyEl) {
+        monthlyEl.textContent = '₹' + (targetNum / 12).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      // Latency
+      const latencyEl = document.getElementById('result-latency');
+      if (latencyEl) {
+        latencyEl.textContent = `⚡ ${data.latency || '12.0 ms'}`;
+      }
+
+      // Confidence
+      const confScore = data.confidence || 78;
+      const confBar = document.getElementById('confidence-fill');
+      const confText = document.getElementById('confidence-text');
+      if (confBar) confBar.style.width = `${confScore}%`;
+      if (confText) confText.textContent = `Model Confidence: ${confScore}%`;
+
+      // Update active state
+      activePredictionState = {
+        inputs: data.inputs || { age: 28, sex: 'male', bmi: 24.5, children: 0, smoker: 'no', region: 'west' },
+        prediction: '₹' + formattedTarget,
+        latency: data.latency || '12.0 ms',
+        confidence: confScore
+      };
+
+      // Risk breakdown
+      renderRiskFactorBreakdown(activePredictionState.inputs);
+    }
+
+    // Render initial active state if present
+    if (activePredictionState && activePredictionState.inputs) {
+      renderRiskFactorBreakdown(activePredictionState.inputs);
+      const monEl = document.getElementById('result-monthly');
+      if (monEl) {
+        const val = parseFloat(String(activePredictionState.prediction).replace(/[₹$,]/g, '')) || 0;
+        monEl.textContent = '₹' + (val / 12).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    }
 
     // ============================================================
     // Prediction History
     // ============================================================
     function saveToHistory() {
-      {% if pred_value and inputs %}
+      if (!activePredictionState || !activePredictionState.inputs) {
+        showToast('No prediction to save. Run a prediction first.', 'warn');
+        return;
+      }
       const entry = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        inputs: {{ inputs | tojson
-    }},
-    prediction: '{{ pred_value }}',
-      latency: '{{ latency }}'
+        source: 'manual',
+        inputs: activePredictionState.inputs,
+        prediction: activePredictionState.prediction,
+        latency: activePredictionState.latency || '12.0 ms',
+        confidence: activePredictionState.confidence || 78
       };
-    predictionHistory.unshift(entry);
-    if (predictionHistory.length > 100) predictionHistory = predictionHistory.slice(0, 100);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
-    showToast('Prediction saved to history!');
-    {% else %}
-    showToast('No prediction to save. Run a prediction first.', 'warn');
-    {% endif %}
+      predictionHistory.unshift(entry);
+      if (predictionHistory.length > 500) predictionHistory = predictionHistory.slice(0, 500);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory)); } catch (e) {}
+      renderHistory();
+      renderAnalytics();
+      showToast('Prediction saved to history!');
     }
 
     function renderHistory(recordsToRender, searchQuery = '') {
@@ -1197,11 +1382,9 @@ print(response.json())
         return;
       }
 
-      records.forEach((entry, i) => {
-        // Ensure every entry has an ID
-        if (!entry.id) {
-          entry.id = 'hist_' + Date.now() + '_' + i;
-        }
+      records.forEach((rawEntry, i) => {
+        const entry = normalizeHistoryItem(rawEntry);
+        if (!entry) return;
 
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
@@ -1209,18 +1392,18 @@ print(response.json())
 
         const d = new Date(entry.timestamp);
         const dateStr = isNaN(d.getTime()) ? (entry.timestamp || '-') : `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        const isSmoker = String(entry.inputs?.smoker || '').toLowerCase() === 'yes';
+        const isSmoker = entry.inputs.smoker === 'yes';
 
         tr.innerHTML = `
           <td>${i + 1}</td>
           <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;">${dateStr}</td>
-          <td>${entry.inputs?.age || '-'}</td>
-          <td style="text-transform: capitalize;">${entry.inputs?.sex || '-'}</td>
-          <td>${entry.inputs?.bmi || '-'}</td>
-          <td>${entry.inputs?.children ?? '0'}</td>
-          <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${entry.inputs?.smoker || 'no'}</span></td>
-          <td style="text-transform: capitalize;">${entry.inputs?.region || '-'}</td>
-          <td class="pred-cell">${entry.prediction || '-'}</td>
+          <td>${entry.inputs.age}</td>
+          <td style="text-transform: capitalize;">${entry.inputs.sex}</td>
+          <td>${entry.inputs.bmi}</td>
+          <td>${entry.inputs.children}</td>
+          <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${entry.inputs.smoker}</span></td>
+          <td style="text-transform: capitalize;">${entry.inputs.region}</td>
+          <td class="pred-cell">${entry.prediction}</td>
           <td></td>
         `;
 
@@ -1259,27 +1442,25 @@ print(response.json())
       });
     }
 
-    function loadFromHistoryEntry(entry) {
+    function loadFromHistoryEntry(rawEntry) {
+      const entry = normalizeHistoryItem(rawEntry);
       if (!entry || !entry.inputs) {
         showToast('Demographic inputs missing from history entry', 'warn');
         return;
       }
 
-      const inp = entry.inputs;
-      const age = parseInt(inp.age, 10) || 28;
-      const bmi = parseFloat(inp.bmi) || 24.5;
-      const children = parseInt(inp.children, 10) || 0;
-      const sex = String(inp.sex || 'male').toLowerCase().trim();
-      const smoker = String(inp.smoker || 'no').toLowerCase().trim();
-      const region = String(inp.region || 'west').toLowerCase().trim();
+      const { age, sex, bmi, children, smoker, region } = entry.inputs;
 
-      // 1. Fill into prediction calculator inputs & visual sliders
+      // 1. Fill into prediction calculator inputs & visual sliders & radio cards
       fillPreset(age, sex, bmi, children, smoker, region);
 
-      // 2. Switch to Predict tab
+      // 2. Sync the right-side prediction results panel with this entry's prediction data!
+      displayPredictionResult(entry, true);
+
+      // 3. Switch to Predict tab
       switchTab('predict');
 
-      // 3. Scroll cleanly into view
+      // 4. Scroll cleanly into view
       const formEl = document.getElementById('prediction-form');
       if (formEl) {
         formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1287,7 +1468,7 @@ print(response.json())
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
-      showToast(`Loaded into Calculator: Age ${age}, ${sex}, BMI ${bmi}, ${smoker === 'yes' ? 'Smoker' : 'Non-Smoker'}, ${region.toUpperCase()} India`, 'success');
+      showToast(`Synced from History: Age ${age}, ${sex}, BMI ${bmi}, ${smoker === 'yes' ? 'Smoker' : 'Non-Smoker'}, ${region.toUpperCase()} India • ${entry.prediction}`, 'success');
     }
 
     function deleteHistoryItemEntry(entry, index) {
@@ -1300,7 +1481,7 @@ print(response.json())
       }
       if (idx !== -1) {
         predictionHistory.splice(idx, 1);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory)); } catch (e) {}
         const searchInput = document.getElementById('history-search');
         if (searchInput && searchInput.value) {
           filterHistoryTable(searchInput.value);
@@ -1321,10 +1502,12 @@ print(response.json())
 
       const tokens = q.split(/\s+/).filter(Boolean);
 
-      const filtered = predictionHistory.filter((entry, i) => {
-        const isSmoker = String(entry.inputs?.smoker || '').toLowerCase() === 'yes';
+      const filtered = predictionHistory.filter((rawEntry, i) => {
+        const entry = normalizeHistoryItem(rawEntry);
+        if (!entry) return false;
+        const isSmoker = entry.inputs.smoker === 'yes';
         const smokerSemantic = isSmoker ? 'smoker yes smoking tobacco' : 'non-smoker nonsmoker no non smoker';
-        const isHighRisk = isSmoker || parseFloat(entry.inputs?.bmi) >= 30;
+        const isHighRisk = isSmoker || parseFloat(entry.inputs.bmi) >= 30;
         const riskSemantic = isHighRisk ? 'high risk high-risk danger' : 'standard normal safe low-risk low risk';
         const predStr = String(entry.prediction || '');
         const predNum = parseFloat(predStr.replace(/[₹,$\s]/g, '')) || 0;
@@ -1334,13 +1517,13 @@ print(response.json())
         const corpus = [
           String(i + 1),
           dateStr,
-          String(entry.inputs?.age || ''),
-          String(entry.inputs?.sex || ''),
-          String(entry.inputs?.bmi || ''),
-          String(entry.inputs?.children || ''),
+          String(entry.inputs.age || ''),
+          String(entry.inputs.sex || ''),
+          String(entry.inputs.bmi || ''),
+          String(entry.inputs.children || ''),
           smokerSemantic,
-          String(entry.inputs?.smoker || ''),
-          String(entry.inputs?.region || ''),
+          String(entry.inputs.smoker || ''),
+          String(entry.inputs.region || ''),
           riskSemantic,
           predStr,
           String(Math.round(predNum))
@@ -1381,7 +1564,7 @@ print(response.json())
     function clearHistory() {
       if (confirm('Clear all prediction history?')) {
         predictionHistory = [];
-        localStorage.setItem(STORAGE_KEY, '[]');
+        try { localStorage.setItem(STORAGE_KEY, '[]'); } catch (e) {}
         const searchInput = document.getElementById('history-search');
         if (searchInput) searchInput.value = '';
         renderHistory();
@@ -1394,7 +1577,8 @@ print(response.json())
       if (predictionHistory.length === 0) { showToast('No history to export', 'warn'); return; }
       let csv = 'Timestamp,Age,Sex,BMI,Children,Smoker,Region,Prediction\n';
       predictionHistory.forEach(e => {
-        csv += `${e.timestamp},${e.inputs.age},${e.inputs.sex},${e.inputs.bmi},${e.inputs.children},${e.inputs.smoker},${e.inputs.region},${e.prediction}\n`;
+        const inp = e.inputs || e || {};
+        csv += `${e.timestamp},${inp.age || ''},${inp.sex || ''},${inp.bmi || ''},${inp.children ?? 0},${inp.smoker || 'no'},${inp.region || ''},${e.prediction || ''}\n`;
       });
       downloadFile('modelpulse_history.csv', csv, 'text/csv');
       showToast('History exported as CSV');
@@ -1501,10 +1685,12 @@ print(response.json())
 
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       const strokeColor = isDark ? '#FFFFFF' : '#000000';
-      let smokers = 0, nonSmokers = 0, highBmi = 0, normalBmi = 0;
       predictionHistory.forEach(e => {
-        if (e.inputs.smoker === 'yes') smokers++; else nonSmokers++;
-        if (parseFloat(e.inputs.bmi) >= 30) highBmi++; else normalBmi++;
+        const inp = e.inputs || e || {};
+        const isSmoker = String(inp.smoker || 'no').toLowerCase() === 'yes';
+        if (isSmoker) smokers++; else nonSmokers++;
+        const bmiVal = parseFloat(inp.bmi) || 0;
+        if (bmiVal >= 30) highBmi++; else normalBmi++;
       });
 
       const data = [
@@ -1610,24 +1796,26 @@ print(response.json())
     // Working Export PDF Functionality
     // ============================================================
     function exportResult(format) {
-      {% if pred_value and inputs %}
-      const inputs = {{ inputs | tojson
-    }};
-    const predVal = "{{ pred_value }}";
-    const latency = "{{ latency }}";
-    const refId = "MP-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-    const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
+      if (!activePredictionState || !activePredictionState.inputs) {
+        showToast('No prediction generated yet. Enter parameters and predict first.', 'warn');
+        return;
+      }
+      const inputs = activePredictionState.inputs;
+      const predVal = activePredictionState.prediction;
+      const latency = activePredictionState.latency || '12.0 ms';
+      const refId = "MP-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
 
-    const numVal = parseFloat(predVal.replace(/[₹$,]/g, ''));
-    const monthlyVal = "₹" + (numVal / 12).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const numVal = parseFloat(String(predVal).replace(/[₹$,]/g, '')) || 0;
+      const monthlyVal = "₹" + (numVal / 12).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const printWindow = window.open('', '_blank', 'width=900,height=960');
-    if (!printWindow) {
-      showToast('Popup was blocked. Please allow popups to save as PDF.', 'warn');
-      return;
-    }
+      const printWindow = window.open('', '_blank', 'width=900,height=960');
+      if (!printWindow) {
+        showToast('Popup was blocked. Please allow popups to save as PDF.', 'warn');
+        return;
+      }
 
-    const printHtml = `<!DOCTYPE html>
+      const printHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -1760,60 +1948,56 @@ print(response.json())
 </body>
 </html>`;
 
-    printWindow.document.open();
-    printWindow.document.write(printHtml);
-    printWindow.document.close();
-    showToast('Opening PDF / Print Certificate view...');
-    {% else %}
-    showToast('No prediction generated yet. Enter parameters and predict first.', 'warn');
-    {% endif %}
+      printWindow.document.open();
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+      showToast('Opening PDF / Print Certificate view...');
     }
 
     // ============================================================
     // Working Share Feature & Modal
     // ============================================================
     function shareResult() {
-      {% if pred_value and inputs %}
-      const inputs = {{ inputs | tojson
-    }};
-    const predVal = "{{ pred_value }}";
+      if (!activePredictionState || !activePredictionState.inputs) {
+        const shareUrl = window.location.href;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          showToast('Platform link copied to clipboard!');
+        });
+        return;
+      }
+      const inputs = activePredictionState.inputs;
+      const predVal = activePredictionState.prediction;
 
-    const params = new URLSearchParams({
-      age: inputs.age,
-      sex: inputs.sex,
-      bmi: inputs.bmi,
-      children: inputs.children,
-      smoker: inputs.smoker,
-      region: inputs.region,
-      pred: predVal
-    });
+      const params = new URLSearchParams({
+        age: inputs.age,
+        sex: inputs.sex,
+        bmi: inputs.bmi,
+        children: inputs.children,
+        smoker: inputs.smoker,
+        region: inputs.region,
+        pred: predVal
+      });
 
-    const shareUrl = window.location.origin + window.location.pathname + '?' + params.toString();
-    const shareText = `ModelPulse Insurance Estimate: ${predVal}/year for Age ${inputs.age}, BMI ${inputs.bmi}, Smoker: ${inputs.smoker}`;
+      const shareUrl = window.location.origin + window.location.pathname + '?' + params.toString();
+      const shareText = `ModelPulse Insurance Estimate: ${predVal}/year for Age ${inputs.age}, BMI ${inputs.bmi}, Smoker: ${inputs.smoker}`;
 
-    if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
-      navigator.share({
-        title: 'ModelPulse Insurance Estimate',
-        text: shareText,
-        url: shareUrl
-      }).catch(() => openShareModal(shareUrl, predVal, inputs));
-    } else {
-      openShareModal(shareUrl, predVal, inputs);
-    }
-    {% else %}
-    const shareUrl = window.location.href;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      showToast('Platform link copied to clipboard!');
-    });
-    {% endif %}
+      if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
+        navigator.share({
+          title: 'ModelPulse Insurance Estimate',
+          text: shareText,
+          url: shareUrl
+        }).catch(() => openShareModal(shareUrl, predVal, inputs));
+      } else {
+        openShareModal(shareUrl, predVal, inputs);
+      }
     }
 
     function openShareModal(url, predVal, inputs) {
       document.getElementById('share-link-input').value = url;
-      document.getElementById('share-preview-amount').textContent = predVal || '$0.00';
+      document.getElementById('share-preview-amount').textContent = predVal || '₹0.00';
       if (inputs) {
         document.getElementById('share-preview-details').textContent =
-          `Age ${inputs.age} • BMI ${inputs.bmi} • ${inputs.smoker === 'yes' ? 'Smoker 🚬' : 'Non-Smoker 🚭'} • ${inputs.region.toUpperCase()}`;
+          `Age ${inputs.age} • BMI ${inputs.bmi} • ${inputs.smoker === 'yes' ? 'Smoker 🚬' : 'Non-Smoker 🚭'} • ${inputs.region.toUpperCase()} India`;
       }
 
       const encodedUrl = encodeURIComponent(url);
@@ -1852,8 +2036,17 @@ print(response.json())
         const bmi = parseFloat(params.get('bmi')) || 30.0;
         const children = parseInt(params.get('children')) || 0;
         const smoker = params.get('smoker') || 'no';
-        const region = params.get('region') || 'southwest';
+        const region = params.get('region') || 'west';
         fillPreset(age, sex, bmi, children, smoker, region);
+
+        if (params.has('pred')) {
+          displayPredictionResult({
+            inputs: { age, sex, bmi, children, smoker, region },
+            prediction: params.get('pred'),
+            latency: '12.0 ms',
+            confidence: 78
+          }, false);
+        }
         showToast('Shared parameters loaded from URL!');
       }
     }
@@ -2044,6 +2237,8 @@ print(response.json())
 
       records.slice(0, 300).forEach((row, i) => {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click row to load policyholder into Calculator';
         const pred = row.predicted_charge;
         const isSmoker = (row.smoker || '').toLowerCase() === 'yes';
         const isHighRisk = isSmoker || parseFloat(row.bmi) >= 30;
@@ -2059,6 +2254,21 @@ print(response.json())
           <td class="pred-cell">${pred !== null && pred !== undefined ? '₹' + Number(pred).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '<span style="color:#EF4444">Validation Error</span>'}</td>
           <td><span class="table-badge ${isHighRisk ? 'danger' : 'safe'}">${isHighRisk ? 'HIGH RISK' : 'STANDARD'}</span></td>
         `;
+
+        tr.addEventListener('click', () => {
+          loadFromHistoryEntry({
+            inputs: {
+              age: row.age,
+              sex: row.sex,
+              bmi: row.bmi,
+              children: row.children,
+              smoker: row.smoker,
+              region: row.region
+            },
+            prediction: pred !== null && pred !== undefined ? '₹' + Number(pred).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : undefined
+          });
+        });
+
         tbody.appendChild(tr);
       });
     }
