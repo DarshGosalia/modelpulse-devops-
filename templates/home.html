@@ -927,31 +927,78 @@ print(response.json())
     // Form Controls
     // ============================================================
     function fillPreset(age, sex, bmi, children, smoker, region) {
-      document.getElementById('age').value = age;
-      document.getElementById('age-slider').value = age;
-      document.getElementById('bmi').value = bmi;
-      document.getElementById('children').value = children;
+      // 1. Age
+      const ageVal = parseInt(age, 10) || 28;
+      const ageInput = document.getElementById('age');
+      const ageSlider = document.getElementById('age-slider');
+      if (ageInput) {
+        ageInput.value = ageVal;
+        ageInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if (ageSlider) ageSlider.value = ageVal;
 
-      // Radio buttons
+      // 2. BMI
+      const bmiVal = parseFloat(bmi) || 24.5;
+      const bmiInput = document.getElementById('bmi');
+      if (bmiInput) {
+        bmiInput.value = bmiVal;
+        bmiInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      updateBmiIndicator(bmiVal);
+
+      // 3. Children
+      const kidsVal = parseInt(children, 10) || 0;
+      const kidsInput = document.getElementById('children');
+      if (kidsInput) {
+        kidsInput.value = kidsVal;
+        kidsInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      updateDepVisual(kidsVal);
+
+      // 4. Sex Radio
+      const sexStr = String(sex || 'male').toLowerCase().trim();
+      const normSex = (sexStr === 'female' || sexStr === 'f') ? 'female' : 'male';
       document.querySelectorAll(`[name="sex"]`).forEach(r => {
-        r.checked = r.value === sex;
-        r.closest('.radio-card').classList.toggle('selected', r.value === sex);
+        const isMatch = r.value === normSex;
+        r.checked = isMatch;
+        const card = r.closest('.radio-card');
+        if (card) card.classList.toggle('selected', isMatch);
+        if (isMatch) r.dispatchEvent(new Event('change', { bubbles: true }));
       });
+
+      // 5. Smoker Radio
+      const smokerStr = String(smoker || 'no').toLowerCase().trim();
+      const normSmoker = (smokerStr === 'yes' || smokerStr === 'true' || smokerStr === '1') ? 'yes' : 'no';
       document.querySelectorAll(`[name="smoker"]`).forEach(r => {
-        r.checked = r.value === smoker;
-        r.closest('.toggle-card').classList.toggle('selected', r.value === smoker);
+        const isMatch = r.value === normSmoker;
+        r.checked = isMatch;
+        const card = r.closest('.toggle-card');
+        if (card) card.classList.toggle('selected', isMatch);
+        if (isMatch) r.dispatchEvent(new Event('change', { bubbles: true }));
       });
+
+      // 6. Region Radio
+      const regStr = String(region || 'west').toLowerCase().trim();
+      let normRegion = 'west';
+      if (regStr.includes('north')) normRegion = 'north';
+      else if (regStr.includes('south')) normRegion = 'south';
+      else if (regStr.includes('east')) normRegion = 'east';
+      else normRegion = 'west';
+
       document.querySelectorAll(`[name="region"]`).forEach(r => {
-        r.checked = r.value === region;
-        r.closest('.region-card').classList.toggle('selected', r.value === region);
+        const isMatch = r.value === normRegion;
+        r.checked = isMatch;
+        const card = r.closest('.region-card');
+        if (card) card.classList.toggle('selected', isMatch);
+        if (isMatch) r.dispatchEvent(new Event('change', { bubbles: true }));
       });
 
-      updateBmiIndicator(bmi);
-      updateDepVisual(children);
-
-      // Visual feedback
-      document.querySelector('.form-panel').classList.add('flash');
-      setTimeout(() => document.querySelector('.form-panel').classList.remove('flash'), 400);
+      // 7. Visual Pulse
+      const formPanel = document.querySelector('.form-panel');
+      if (formPanel) {
+        formPanel.classList.add('flash');
+        setTimeout(() => formPanel.classList.remove('flash'), 500);
+      }
     }
 
     function syncSlider(field, value) {
@@ -1151,28 +1198,118 @@ print(response.json())
       }
 
       records.forEach((entry, i) => {
+        // Ensure every entry has an ID
+        if (!entry.id) {
+          entry.id = 'hist_' + Date.now() + '_' + i;
+        }
+
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.title = 'Click ↻ or click row to load into Calculator';
+
         const d = new Date(entry.timestamp);
         const dateStr = isNaN(d.getTime()) ? (entry.timestamp || '-') : `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        const isSmoker = (entry.inputs.smoker || '').toLowerCase() === 'yes';
-        const entryId = entry.id;
+        const isSmoker = String(entry.inputs?.smoker || '').toLowerCase() === 'yes';
 
         tr.innerHTML = `
           <td>${i + 1}</td>
           <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;">${dateStr}</td>
-          <td>${entry.inputs.age || '-'}</td>
-          <td style="text-transform: capitalize;">${entry.inputs.sex || '-'}</td>
-          <td>${entry.inputs.bmi || '-'}</td>
-          <td>${entry.inputs.children || '0'}</td>
-          <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${entry.inputs.smoker || 'no'}</span></td>
-          <td style="text-transform: capitalize;">${entry.inputs.region || '-'}</td>
+          <td>${entry.inputs?.age || '-'}</td>
+          <td style="text-transform: capitalize;">${entry.inputs?.sex || '-'}</td>
+          <td>${entry.inputs?.bmi || '-'}</td>
+          <td>${entry.inputs?.children ?? '0'}</td>
+          <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${entry.inputs?.smoker || 'no'}</span></td>
+          <td style="text-transform: capitalize;">${entry.inputs?.region || '-'}</td>
           <td class="pred-cell">${entry.prediction || '-'}</td>
-          <td>
-            <button class="table-action" onclick="loadFromHistory(${entryId})" title="Load into Calculator">↻</button>
-            <button class="table-action danger" onclick="deleteHistoryItem(${entryId})" title="Delete">✕</button>
-          </td>`;
+          <td></td>
+        `;
+
+        // Direct action button event listeners (immune to escaping/reference bugs)
+        const tdActions = tr.querySelector('td:last-child');
+
+        const loadBtn = document.createElement('button');
+        loadBtn.type = 'button';
+        loadBtn.className = 'table-action';
+        loadBtn.title = 'Load into Calculator';
+        loadBtn.textContent = '↻';
+        loadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          loadFromHistoryEntry(entry);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'table-action danger';
+        deleteBtn.title = 'Delete';
+        deleteBtn.textContent = '✕';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteHistoryItemEntry(entry, i);
+        });
+
+        tdActions.appendChild(loadBtn);
+        tdActions.appendChild(deleteBtn);
+
+        // Clicking anywhere on the row also loads the entry
+        tr.addEventListener('click', () => {
+          loadFromHistoryEntry(entry);
+        });
+
         body.appendChild(tr);
       });
+    }
+
+    function loadFromHistoryEntry(entry) {
+      if (!entry || !entry.inputs) {
+        showToast('Demographic inputs missing from history entry', 'warn');
+        return;
+      }
+
+      const inp = entry.inputs;
+      const age = parseInt(inp.age, 10) || 28;
+      const bmi = parseFloat(inp.bmi) || 24.5;
+      const children = parseInt(inp.children, 10) || 0;
+      const sex = String(inp.sex || 'male').toLowerCase().trim();
+      const smoker = String(inp.smoker || 'no').toLowerCase().trim();
+      const region = String(inp.region || 'west').toLowerCase().trim();
+
+      // 1. Fill into prediction calculator inputs & visual sliders
+      fillPreset(age, sex, bmi, children, smoker, region);
+
+      // 2. Switch to Predict tab
+      switchTab('predict');
+
+      // 3. Scroll cleanly into view
+      const formEl = document.getElementById('prediction-form');
+      if (formEl) {
+        formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      showToast(`Loaded into Calculator: Age ${age}, ${sex}, BMI ${bmi}, ${smoker === 'yes' ? 'Smoker' : 'Non-Smoker'}, ${region.toUpperCase()} India`, 'success');
+    }
+
+    function deleteHistoryItemEntry(entry, index) {
+      let idx = -1;
+      if (entry && entry.id) {
+        idx = predictionHistory.findIndex(e => String(e.id) === String(entry.id));
+      }
+      if (idx === -1 && typeof index === 'number' && index < predictionHistory.length) {
+        idx = index;
+      }
+      if (idx !== -1) {
+        predictionHistory.splice(idx, 1);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
+        const searchInput = document.getElementById('history-search');
+        if (searchInput && searchInput.value) {
+          filterHistoryTable(searchInput.value);
+        } else {
+          renderHistory();
+        }
+        renderAnalytics();
+        showToast('Record removed from history');
+      }
     }
 
     function filterHistoryTable(query) {
@@ -1185,9 +1322,9 @@ print(response.json())
       const tokens = q.split(/\s+/).filter(Boolean);
 
       const filtered = predictionHistory.filter((entry, i) => {
-        const isSmoker = String(entry.inputs.smoker || '').toLowerCase() === 'yes';
+        const isSmoker = String(entry.inputs?.smoker || '').toLowerCase() === 'yes';
         const smokerSemantic = isSmoker ? 'smoker yes smoking tobacco' : 'non-smoker nonsmoker no non smoker';
-        const isHighRisk = isSmoker || parseFloat(entry.inputs.bmi) >= 30;
+        const isHighRisk = isSmoker || parseFloat(entry.inputs?.bmi) >= 30;
         const riskSemantic = isHighRisk ? 'high risk high-risk danger' : 'standard normal safe low-risk low risk';
         const predStr = String(entry.prediction || '');
         const predNum = parseFloat(predStr.replace(/[₹,$\s]/g, '')) || 0;
@@ -1197,13 +1334,13 @@ print(response.json())
         const corpus = [
           String(i + 1),
           dateStr,
-          String(entry.inputs.age || ''),
-          String(entry.inputs.sex || ''),
-          String(entry.inputs.bmi || ''),
-          String(entry.inputs.children || ''),
+          String(entry.inputs?.age || ''),
+          String(entry.inputs?.sex || ''),
+          String(entry.inputs?.bmi || ''),
+          String(entry.inputs?.children || ''),
           smokerSemantic,
-          String(entry.inputs.smoker || ''),
-          String(entry.inputs.region || ''),
+          String(entry.inputs?.smoker || ''),
+          String(entry.inputs?.region || ''),
           riskSemantic,
           predStr,
           String(Math.round(predNum))
@@ -1216,32 +1353,29 @@ print(response.json())
     }
 
     function loadFromHistory(idOrIndex) {
-      let entry = predictionHistory.find(e => e.id === idOrIndex);
-      if (!entry && typeof idOrIndex === 'number' && idOrIndex < predictionHistory.length) {
-        entry = predictionHistory[idOrIndex];
+      let entry = null;
+      if (idOrIndex !== undefined && idOrIndex !== null) {
+        entry = predictionHistory.find(e => String(e.id) === String(idOrIndex));
+        if (!entry && typeof idOrIndex === 'number' && idOrIndex < predictionHistory.length) {
+          entry = predictionHistory[idOrIndex];
+        }
+        if (!entry) {
+          const idx = parseInt(idOrIndex, 10);
+          if (!isNaN(idx) && idx >= 0 && idx < predictionHistory.length) {
+            entry = predictionHistory[idx];
+          }
+        }
       }
-      if (!entry) return;
-      fillPreset(entry.inputs.age, entry.inputs.sex, entry.inputs.bmi, entry.inputs.children, entry.inputs.smoker, entry.inputs.region);
-      switchTab('predict');
-      showToast('Profile loaded from history');
+      if (!entry && predictionHistory.length > 0) {
+        entry = predictionHistory[0];
+      }
+      if (entry) {
+        loadFromHistoryEntry(entry);
+      }
     }
 
     function deleteHistoryItem(idOrIndex) {
-      let idx = predictionHistory.findIndex(e => e.id === idOrIndex);
-      if (idx === -1 && typeof idOrIndex === 'number' && idOrIndex < predictionHistory.length) {
-        idx = idOrIndex;
-      }
-      if (idx !== -1) {
-        predictionHistory.splice(idx, 1);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(predictionHistory));
-        const searchInput = document.getElementById('history-search');
-        if (searchInput && searchInput.value) {
-          filterHistoryTable(searchInput.value);
-        } else {
-          renderHistory();
-        }
-        renderAnalytics();
-      }
+      deleteHistoryItemEntry(null, idOrIndex);
     }
 
     function clearHistory() {
