@@ -71,9 +71,9 @@ pycaret-deployment-aws/
 │   ├── model_training.log     # Records retraining timestamp, metrics, duration
 │   └── predictions.log        # Records every inference call, input features, latency
 ├── static/
-│   └── style.css              # Glassmorphic dark-mode styles & micro-animations
+│   └── style.css              # Neo-Brutalist design system (3px black borders, hard offset shadows, cyber palette)
 ├── templates/
-│   └── home.html              # Modern, accessible Web UI with presets & metrics
+│   └── home.html              # Multi-tab Neo-Brutalist Web UI with presets, telemetry & canvas analytics
 ├── .dockerignore              # Excludes unnecessary build context files
 ├── Dockerfile                 # Multi-stage production container specification
 ├── docker-compose.yml         # Container orchestration with volume mounts

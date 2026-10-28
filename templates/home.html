@@ -6,10 +6,10 @@
   <title>ModelPulse — Production MLOps Insurance Intelligence Platform</title>
   <meta name="description" content="ModelPulse: Enterprise-grade insurance premium prediction engine powered by PyCaret regression, Docker orchestration, Jenkins CI/CD, and real-time telemetry monitoring.">
 
-  <!-- Premium Typography: Inter + JetBrains Mono -->
+  <!-- Premium Neo-Brutalist Typography: Space Grotesk + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -21,11 +21,8 @@
       <div class="topbar-left">
         <div class="logo-group">
           <div class="logo-icon">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="7" fill="url(#logo-grad)"/>
-              <path d="M7 19L14 9L21 19" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="14" cy="12" r="2" fill="white"/>
-              <defs><linearGradient id="logo-grad" x1="0" y1="0" x2="28" y2="28"><stop stop-color="#6366F1"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient></defs>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" fill="#000000" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </div>
           <div class="logo-text">
@@ -960,38 +957,44 @@ print(response.json())
 
       const maxCount = Math.max(...counts, 1);
       const barW = (W - 80) / labels.length;
-      const colors = ['#6366F1', '#8B5CF6', '#A78BFA', '#C084FC', '#E879F9', '#F472B6', '#FB7185', '#EF4444'];
+      const colors = ['#FFDE59', '#A3E635', '#38BDF8', '#FF76CE', '#C084FC', '#FB923C', '#2DD4BF', '#FF6B6B'];
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const strokeColor = isDark ? '#FFFFFF' : '#000000';
 
       // Y-axis
-      ctx.strokeStyle = isDark ? '#374151' : '#E5E7EB';
+      ctx.strokeStyle = isDark ? '#4B5563' : '#D1D5DB';
       ctx.lineWidth = 1;
       for (let i = 0; i <= 4; i++) {
         const y = 30 + ((H - 60) / 4) * i;
         ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(W - 10, y); ctx.stroke();
         ctx.fillStyle = isDark ? '#9CA3AF' : '#6B7280';
-        ctx.font = '11px Inter'; ctx.textAlign = 'right';
+        ctx.font = 'bold 11px JetBrains Mono'; ctx.textAlign = 'right';
         ctx.fillText(Math.round(maxCount - (maxCount / 4) * i), 45, y + 4);
       }
 
-      // Bars
+      // Bars with Neo-Brutalist borders
       labels.forEach((label, i) => {
         const x = 55 + i * barW + 4;
         const barH = (counts[i] / maxCount) * (H - 70);
         const y = H - 30 - barH;
 
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.beginPath();
-        ctx.roundRect(x, y, barW - 8, barH, [4, 4, 0, 0]);
-        ctx.fill();
+        if (barH > 0) {
+          ctx.fillStyle = colors[i % colors.length];
+          ctx.beginPath();
+          ctx.roundRect(x, y, barW - 8, barH, [4, 4, 0, 0]);
+          ctx.fill();
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
 
-        ctx.fillStyle = isDark ? '#9CA3AF' : '#6B7280';
-        ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'center';
+        ctx.fillStyle = isDark ? '#E5E7EB' : '#111827';
+        ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center';
         ctx.fillText(label, x + (barW - 8) / 2, H - 12);
 
         if (counts[i] > 0) {
-          ctx.fillStyle = isDark ? '#E5E7EB' : '#111827';
-          ctx.font = 'bold 11px Inter';
+          ctx.fillStyle = isDark ? '#FFDE59' : '#000000';
+          ctx.font = 'bold 12px Space Grotesk';
           ctx.fillText(counts[i], x + (barW - 8) / 2, y - 6);
         }
       });
@@ -1004,6 +1007,7 @@ print(response.json())
       ctx.clearRect(0, 0, W, H);
 
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const strokeColor = isDark ? '#FFFFFF' : '#000000';
       let smokers = 0, nonSmokers = 0, highBmi = 0, normalBmi = 0;
       predictionHistory.forEach(e => {
         if (e.inputs.smoker === 'yes') smokers++; else nonSmokers++;
@@ -1011,10 +1015,10 @@ print(response.json())
       });
 
       const data = [
-        { label: 'Non-Smoker', value: nonSmokers, color: '#22C55E' },
-        { label: 'Smoker', value: smokers, color: '#EF4444' },
-        { label: 'BMI < 30', value: normalBmi, color: '#6366F1' },
-        { label: 'BMI ≥ 30', value: highBmi, color: '#F59E0B' }
+        { label: 'Non-Smoker', value: nonSmokers, color: '#A3E635' },
+        { label: 'Smoker', value: smokers, color: '#FF6B6B' },
+        { label: 'BMI < 30', value: normalBmi, color: '#38BDF8' },
+        { label: 'BMI ≥ 30', value: highBmi, color: '#FFDE59' }
       ];
 
       const maxVal = Math.max(...data.map(d => d.value), 1);
@@ -1025,23 +1029,33 @@ print(response.json())
         const y = startY + i * (barH + 16);
         const barW = (d.value / maxVal) * (W - 160);
 
-        ctx.fillStyle = isDark ? '#9CA3AF' : '#374151';
-        ctx.font = '12px Inter'; ctx.textAlign = 'right';
+        ctx.fillStyle = isDark ? '#E5E7EB' : '#111827';
+        ctx.font = 'bold 12px Space Grotesk'; ctx.textAlign = 'right';
         ctx.fillText(d.label, 90, y + barH / 2 + 4);
 
-        ctx.fillStyle = d.color + '33';
+        // Background track
+        ctx.fillStyle = isDark ? '#262626' : '#F4EFE6';
         ctx.beginPath();
-        ctx.roundRect(100, y, W - 160, barH, 6);
+        ctx.roundRect(100, y, W - 160, barH, 4);
         ctx.fill();
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
 
-        ctx.fillStyle = d.color;
-        ctx.beginPath();
-        ctx.roundRect(100, y, Math.max(barW, 2), barH, 6);
-        ctx.fill();
+        // Value Bar with Neo-Brutalist border
+        if (barW > 0) {
+          ctx.fillStyle = d.color;
+          ctx.beginPath();
+          ctx.roundRect(100, y, Math.max(barW, 6), barH, 4);
+          ctx.fill();
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
 
-        ctx.fillStyle = isDark ? '#E5E7EB' : '#111827';
-        ctx.font = 'bold 13px Inter'; ctx.textAlign = 'left';
-        ctx.fillText(d.value, 100 + Math.max(barW, 2) + 8, y + barH / 2 + 5);
+        ctx.fillStyle = isDark ? '#FFDE59' : '#000000';
+        ctx.font = 'bold 13px JetBrains Mono'; ctx.textAlign = 'left';
+        ctx.fillText(d.value, 100 + Math.max(barW, 6) + 8, y + barH / 2 + 5);
       });
     }
 
