@@ -82,7 +82,15 @@ pipeline {
                     echo "${BATCH_RESPONSE}" | grep -q "batch_size"
                     echo "Batch prediction smoke test passed!"
 
-                    # 4. Metrics & History Endpoints Verification
+                    # 4. CSV Batch Upload Smoke Test (POST /predict_csv)
+                    echo "Running CSV Batch Upload Smoke Test (POST /predict_csv)..."
+                    CSV_RESPONSE=$(curl -f -s -X POST http://localhost:${APP_PORT}/predict_csv \
+                        -H "Content-Type: text/plain" \
+                        --data-binary $'age,sex,bmi,children,smoker,region\n28,male,30.0,1,no,southwest\n45,female,34.0,2,yes,southeast')
+                    echo "${CSV_RESPONSE}" | grep -q "total_rows"
+                    echo "CSV batch smoke test passed!"
+
+                    # 5. Metrics & History Endpoints Verification
                     echo "Verifying /api/metrics and /api/history..."
                     curl -f -s http://localhost:${APP_PORT}/api/metrics | grep -q "total_predictions"
                     curl -f -s http://localhost:${APP_PORT}/api/history | grep -q "predictions"
@@ -91,7 +99,7 @@ pipeline {
                     # Copy container logs to host if needed and run monitoring script
                     docker cp ${CONTAINER_NAME}:/app/logs/. ./logs/ || true
 
-                    # 5. Telemetry & Log Monitoring verification (Unit 6.2 & 9.4)
+                    # 6. Telemetry & Log Monitoring verification (Unit 6.2 & 9.4)
                     echo "Executing monitor_logs.py to summarize inference telemetry..."
                     if command -v python3 &> /dev/null; then
                         python3 monitor_logs.py

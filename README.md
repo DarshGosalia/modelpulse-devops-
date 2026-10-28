@@ -171,7 +171,7 @@ curl -X POST http://localhost:5000/predict_api \
   }'
 ```
 
-**Batch Inference:**
+**Batch JSON Inference:**
 ```bash
 curl -X POST http://localhost:5000/predict_api \
   -H "Content-Type: application/json" \
@@ -179,6 +179,13 @@ curl -X POST http://localhost:5000/predict_api \
     {"age": 25, "sex": "female", "bmi": 24.0, "children": 0, "smoker": "no", "region": "northeast"},
     {"age": 52, "sex": "male", "bmi": 35.0, "children": 2, "smoker": "yes", "region": "southwest"}
   ]'
+```
+
+**Batch CSV Upload & Scoring:**
+```bash
+curl -X POST http://localhost:5000/predict_csv \
+  -H "Content-Type: text/plain" \
+  --data-binary @data/insurance.csv
 ```
 
 ### 3. Real-Time Telemetry & Metrics Endpoints

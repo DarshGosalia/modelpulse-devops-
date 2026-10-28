@@ -37,6 +37,10 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 14L8 2L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Predict
           </button>
+          <button class="nav-tab" data-tab="batch" onclick="switchTab('batch')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 7h12M2 11h12M2 15h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Batch CSV
+          </button>
           <button class="nav-tab" data-tab="history" onclick="switchTab('history')">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5V8L10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
             History
@@ -377,6 +381,114 @@
       </div>
     </main>
 
+    <!-- ==================== BATCH CSV TAB ==================== -->
+    <main class="tab-content" id="tab-batch">
+      <div class="panel batch-panel">
+        <div class="panel-header">
+          <div class="panel-title-row">
+            <h2 class="panel-title">Batch CSV Inference Engine</h2>
+            <span class="panel-badge">Bulk Scoring</span>
+          </div>
+          <p class="panel-desc">Upload a CSV dataset with demographic features (age, sex, bmi, children, smoker, region) to run automated bulk predictions in parallel.</p>
+        </div>
+
+        <!-- Upload Drop Zone -->
+        <div class="batch-upload-zone" id="batch-drop-zone" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('batch-file-input').click()">
+          <input type="file" id="batch-file-input" accept=".csv" style="display:none;" onchange="handleFileSelect(event)">
+          <div class="upload-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="18" x2="12" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><polyline points="9 15 12 12 15 15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3 class="upload-title">Drop your CSV file here, or click to browse</h3>
+          <p class="upload-subtitle">Accepts standard insurance dataset CSV columns (age, sex, bmi, children, smoker, region)</p>
+          <div class="upload-actions">
+            <button type="button" class="action-btn primary" onclick="event.stopPropagation(); document.getElementById('batch-file-input').click()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13V3a1 1 0 0 1 1-1h4l2 2h5a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.5"/></svg>
+              Select CSV File
+            </button>
+            <button type="button" class="action-btn" onclick="event.stopPropagation(); downloadSampleCsv()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 9v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Download Sample CSV
+            </button>
+          </div>
+          <div class="file-chosen-badge" id="file-chosen-badge" style="display:none;" onclick="event.stopPropagation()">
+            <span class="file-name" id="chosen-file-name">insurance.csv</span>
+            <span class="file-rows" id="chosen-file-rows">0 records</span>
+            <button type="button" class="btn-process-batch" id="btn-process-batch" onclick="runBatchInference()">
+              ⚡ Run Batch Inference
+            </button>
+          </div>
+        </div>
+
+        <!-- Batch KPI Summary Cards (visible after inference) -->
+        <div class="batch-kpi-row" id="batch-kpi-row" style="display:none;">
+          <div class="stat-card">
+            <div class="stat-icon blue"><span>📊</span></div>
+            <div class="stat-info">
+              <span class="stat-value" id="batch-stat-total">0</span>
+              <span class="stat-label">Total Rows Scored</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green"><span>💵</span></div>
+            <div class="stat-info">
+              <span class="stat-value" id="batch-stat-portfolio">$0</span>
+              <span class="stat-label">Portfolio Total</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon amber"><span>📈</span></div>
+            <div class="stat-info">
+              <span class="stat-value" id="batch-stat-avg">$0</span>
+              <span class="stat-label">Average Premium</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple"><span>⚡</span></div>
+            <div class="stat-info">
+              <span class="stat-value" id="batch-stat-latency">0 ms</span>
+              <span class="stat-label">Batch Latency</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Batch Results Table View -->
+        <div class="batch-results-wrapper" id="batch-results-wrapper" style="display:none;">
+          <div class="batch-results-header">
+            <div class="table-search-box">
+              <input type="text" id="batch-search" placeholder="Search records (e.g. smoker, southeast, 45)..." oninput="filterBatchTable(this.value)">
+            </div>
+            <div class="batch-export-actions">
+              <button type="button" class="action-btn primary" onclick="exportBatchCsv()">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 14h8a1 1 0 0 0 1-1V6l-4-4H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1z" stroke="currentColor" stroke-width="1.5"/><path d="M9 2v4h4" stroke="currentColor" stroke-width="1.5"/></svg>
+                Export Annotated CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="history-table-wrapper">
+            <table class="history-table" id="batch-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Age</th>
+                  <th>Sex</th>
+                  <th>BMI</th>
+                  <th>Children</th>
+                  <th>Smoker</th>
+                  <th>Region</th>
+                  <th>Predicted Charge</th>
+                  <th>Risk Tier</th>
+                </tr>
+              </thead>
+              <tbody id="batch-table-body">
+                <!-- Dynamically populated via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+
     <!-- ==================== HISTORY TAB ==================== -->
     <main class="tab-content" id="tab-history">
       <div class="panel history-panel">
@@ -603,6 +715,33 @@ print(response.json())
         </div>
       </div>
     </main>
+
+    <!-- Share Estimate Modal -->
+    <div class="modal-backdrop" id="share-modal" style="display:none;" onclick="closeShareModal(event)">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 class="modal-title">Share Prediction Estimate</h3>
+          <button type="button" class="modal-close" onclick="closeShareModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Share this verified insurance premium projection with colleagues or clients via link or social platforms.</p>
+          <div class="share-preview-card">
+            <span class="preview-badge">OFFICIAL ML ESTIMATE</span>
+            <span class="preview-amount" id="share-preview-amount">$0.00</span>
+            <span class="preview-details" id="share-preview-details">Age 28 • BMI 30.0 • Non-Smoker</span>
+          </div>
+          <div class="share-link-group">
+            <input type="text" id="share-link-input" readonly class="share-link-input">
+            <button type="button" class="share-copy-btn" onclick="copyShareLink()">Copy Link</button>
+          </div>
+          <div class="share-social-row">
+            <a id="share-whatsapp" target="_blank" class="social-share-btn whatsapp">💬 WhatsApp</a>
+            <a id="share-twitter" target="_blank" class="social-share-btn twitter">🐦 Twitter / X</a>
+            <a id="share-email" class="social-share-btn email">✉️ Email</a>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Footer -->
     <footer class="app-footer">
@@ -1113,13 +1252,438 @@ print(response.json())
       URL.revokeObjectURL(url);
     }
 
+    // ============================================================
+    // Working Export PDF Functionality
+    // ============================================================
     function exportResult(format) {
-      showToast('Export feature — saves current prediction data');
+      {% if pred_value and inputs %}
+      const inputs = {{ inputs | tojson }};
+      const predVal = "{{ pred_value }}";
+      const latency = "{{ latency }}";
+      const refId = "MP-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const dateStr = new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
+
+      const numVal = parseFloat(predVal.replace(/[$,]/g, ''));
+      const monthlyVal = "$" + (numVal / 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      const printWindow = window.open('', '_blank', 'width=900,height=960');
+      if (!printWindow) {
+        showToast('Popup was blocked. Please allow popups to save as PDF.', 'warn');
+        return;
+      }
+
+      const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ModelPulse Statement - ${refId}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Space Grotesk', -apple-system, sans-serif; padding: 40px; background: #FFF; color: #000; line-height: 1.45; }
+    .cert-shell { border: 4px solid #000; box-shadow: 8px 8px 0px #000; border-radius: 8px; padding: 36px; max-width: 800px; margin: 0 auto; background: #FFF; }
+    .cert-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #000; padding-bottom: 20px; margin-bottom: 24px; }
+    .logo-box { background: #FFDE59; border: 2.5px solid #000; padding: 6px 14px; font-size: 1.35rem; font-weight: 900; display: inline-block; box-shadow: 3px 3px 0px #000; }
+    .ref-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 700; text-align: right; }
+    .cert-title { font-size: 1.7rem; font-weight: 900; text-transform: uppercase; margin: 16px 0 6px 0; letter-spacing: -0.5px; }
+    .cert-desc { font-size: 0.92rem; color: #4B5563; margin-bottom: 24px; }
+    .premium-hero { background: #A3E635; border: 3px solid #000; box-shadow: 5px 5px 0px #000; padding: 22px; border-radius: 6px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .hero-label { font-size: 0.82rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    .hero-amount { font-family: 'JetBrains Mono', monospace; font-size: 2.85rem; font-weight: 900; line-height: 1.1; }
+    .hero-monthly { font-family: 'JetBrains Mono', monospace; font-size: 1.15rem; font-weight: 800; }
+    .section-title { font-size: 1.05rem; font-weight: 900; text-transform: uppercase; margin: 20px 0 10px 0; border-left: 6px solid #FFDE59; padding-left: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 2.5px solid #000; }
+    th { background: #FFDE59; border: 1.5px solid #000; padding: 9px 12px; font-size: 0.82rem; font-weight: 900; text-transform: uppercase; text-align: left; }
+    td { border: 1.5px solid #000; padding: 9px 12px; font-size: 0.88rem; font-weight: 600; }
+    .val-cell { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1.5px solid #000; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
+    .badge-yes { background: #FF6B6B; color: #FFF; }
+    .badge-no { background: #A3E635; color: #000; }
+    .meta-box { background: #F4EFE6; border: 2px solid #000; padding: 14px 18px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+    .cert-footer { margin-top: 28px; padding-top: 14px; border-top: 2px dashed #9CA3AF; display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: #6B7280; font-weight: 700; }
+    .print-actions { margin-bottom: 20px; text-align: center; }
+    .btn-print { background: #000; color: #FFF; border: none; padding: 10px 24px; font-size: 0.95rem; font-weight: 800; border-radius: 4px; cursor: pointer; box-shadow: 3px 3px 0px #FFDE59; }
+    @media print {
+      .print-actions { display: none !important; }
+      body { padding: 0 !important; }
+      .cert-shell { box-shadow: none !important; border-width: 2px !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-actions">
+    <button class="btn-print" onclick="window.print()">🖨️ Click to Print / Save as PDF</button>
+  </div>
+  <div class="cert-shell">
+    <div class="cert-header">
+      <div>
+        <div class="logo-box">MODELPULSE MLOPS</div>
+        <p style="font-size:0.75rem; font-weight:700; margin-top:4px;">ENTERPRISE INSURANCE INTELLIGENCE PLATFORM</p>
+      </div>
+      <div class="ref-badge">
+        <div>REF: ${refId}</div>
+        <div style="color:#6B7280; font-size:0.75rem; margin-top:2px;">${dateStr}</div>
+      </div>
+    </div>
+
+    <h1 class="cert-title">Insurance Premium Estimation Certificate</h1>
+    <p class="cert-desc">Certified actuarial machine learning projection generated via PyCaret Regression Pipeline</p>
+
+    <div class="premium-hero">
+      <div>
+        <div class="hero-label">Estimated Annual Premium</div>
+        <div class="hero-amount">${predVal}</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="hero-label">Monthly Breakdown</div>
+        <div class="hero-monthly">${monthlyVal} / mo</div>
+      </div>
+    </div>
+
+    <div class="section-title">Policyholder Profile</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Attribute</th>
+          <th>Specified Value</th>
+          <th>Actuarial Assessment</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Age</td>
+          <td class="val-cell">${inputs.age} years</td>
+          <td>${inputs.age >= 50 ? 'Senior Risk Weighting (+$257/yr)' : inputs.age >= 35 ? 'Moderate Demographic' : 'Baseline Young Tier'}</td>
+        </tr>
+        <tr>
+          <td>Biological Sex</td>
+          <td class="val-cell" style="text-transform:capitalize;">${inputs.sex}</td>
+          <td>Standard Mortality Rating</td>
+        </tr>
+        <tr>
+          <td>Body Mass Index (BMI)</td>
+          <td class="val-cell">${inputs.bmi} kg/m²</td>
+          <td>${inputs.bmi >= 30 ? 'Obesity Category (High Factor)' : inputs.bmi >= 25 ? 'Overweight Category' : 'Normal / Ideal Health Tier'}</td>
+        </tr>
+        <tr>
+          <td>Dependents / Children</td>
+          <td class="val-cell">${inputs.children}</td>
+          <td>Family Dependent Loading (+$474/dep)</td>
+        </tr>
+        <tr>
+          <td>Smoker Status</td>
+          <td class="val-cell" style="text-transform:capitalize;">
+            <span class="badge ${inputs.smoker === 'yes' ? 'badge-yes' : 'badge-no'}">${inputs.smoker}</span>
+          </td>
+          <td>${inputs.smoker === 'yes' ? 'CRITICAL RISK FACTOR (+$23,823 Surcharge)' : 'Preferred Non-Smoker Tier'}</td>
+        </tr>
+        <tr>
+          <td>US Geographic Region</td>
+          <td class="val-cell" style="text-transform:capitalize;">${inputs.region}</td>
+          <td>Regional Cost-of-Care Adjustment</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="meta-box">
+      <div><strong>MODEL PIPELINE:</strong> deployment_28042020.pkl</div>
+      <div><strong>INFERENCE LATENCY:</strong> ${latency}</div>
+      <div><strong>ALGORITHM:</strong> Ordinary Least Squares / Ridge</div>
+      <div><strong>ENVIRONMENT:</strong> Docker Container Gunicorn</div>
+    </div>
+
+    <div class="cert-footer">
+      <div>ModelPulse MLOps v2.0 • Automated Jenkins CI/CD Verified</div>
+      <div>Official Digital Record</div>
+    </div>
+  </div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 400);
+    };
+  <\/script>
+</body>
+</html>`;
+
+      printWindow.document.open();
+      printWindow.document.write(printHtml);
+      printWindow.document.close();
+      showToast('Opening PDF / Print Certificate view...');
+      {% else %}
+      showToast('No prediction generated yet. Enter parameters and predict first.', 'warn');
+      {% endif %}
     }
 
+    // ============================================================
+    // Working Share Feature & Modal
+    // ============================================================
     function shareResult() {
-      const url = window.location.href;
-      navigator.clipboard.writeText(url).then(() => showToast('Link copied to clipboard'));
+      {% if pred_value and inputs %}
+      const inputs = {{ inputs | tojson }};
+      const predVal = "{{ pred_value }}";
+
+      const params = new URLSearchParams({
+        age: inputs.age,
+        sex: inputs.sex,
+        bmi: inputs.bmi,
+        children: inputs.children,
+        smoker: inputs.smoker,
+        region: inputs.region,
+        pred: predVal
+      });
+
+      const shareUrl = window.location.origin + window.location.pathname + '?' + params.toString();
+      const shareText = `ModelPulse Insurance Estimate: ${predVal}/year for Age ${inputs.age}, BMI ${inputs.bmi}, Smoker: ${inputs.smoker}`;
+
+      if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
+        navigator.share({
+          title: 'ModelPulse Insurance Estimate',
+          text: shareText,
+          url: shareUrl
+        }).catch(() => openShareModal(shareUrl, predVal, inputs));
+      } else {
+        openShareModal(shareUrl, predVal, inputs);
+      }
+      {% else %}
+      const shareUrl = window.location.href;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast('Platform link copied to clipboard!');
+      });
+      {% endif %}
+    }
+
+    function openShareModal(url, predVal, inputs) {
+      document.getElementById('share-link-input').value = url;
+      document.getElementById('share-preview-amount').textContent = predVal || '$0.00';
+      if (inputs) {
+        document.getElementById('share-preview-details').textContent = 
+          `Age ${inputs.age} • BMI ${inputs.bmi} • ${inputs.smoker === 'yes' ? 'Smoker 🚬' : 'Non-Smoker 🚭'} • ${inputs.region.toUpperCase()}`;
+      }
+
+      const encodedUrl = encodeURIComponent(url);
+      const encodedText = encodeURIComponent(`ModelPulse Insurance Estimate: ${predVal}/yr`);
+
+      document.getElementById('share-whatsapp').href = `https://api.whatsapp.com/send?text=${encodedText}%20${encodedUrl}`;
+      document.getElementById('share-twitter').href = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+      document.getElementById('share-email').href = `mailto:?subject=${encodeURIComponent('ModelPulse Insurance Premium Estimate')}&body=${encodedText}%0A%0AView details here:%20${encodedUrl}`;
+
+      document.getElementById('share-modal').style.display = 'flex';
+
+      navigator.clipboard.writeText(url).then(() => {
+        showToast('Share link copied to clipboard!');
+      }).catch(() => {});
+    }
+
+    function closeShareModal(event) {
+      if (!event || event.target.id === 'share-modal' || event.target.classList.contains('modal-close')) {
+        document.getElementById('share-modal').style.display = 'none';
+      }
+    }
+
+    function copyShareLink() {
+      const input = document.getElementById('share-link-input');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast('Link copied to clipboard!');
+      });
+    }
+
+    function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('age') && params.has('bmi')) {
+        const age = parseInt(params.get('age')) || 28;
+        const sex = params.get('sex') || 'male';
+        const bmi = parseFloat(params.get('bmi')) || 30.0;
+        const children = parseInt(params.get('children')) || 0;
+        const smoker = params.get('smoker') || 'no';
+        const region = params.get('region') || 'southwest';
+        fillPreset(age, sex, bmi, children, smoker, region);
+        showToast('Shared parameters loaded from URL!');
+      }
+    }
+
+    // ============================================================
+    // Batch CSV Upload & Inference Feature
+    // ============================================================
+    let uploadedCsvRows = [];
+    let batchResultsData = [];
+
+    function downloadSampleCsv() {
+      const sampleContent = 
+`age,sex,bmi,children,smoker,region
+19,female,27.9,0,yes,southwest
+28,male,33.0,3,no,southeast
+32,male,28.8,0,no,northwest
+45,female,34.2,2,yes,southeast
+54,female,30.8,3,no,northeast
+24,male,25.6,1,no,northwest
+60,male,36.5,0,yes,southeast`;
+
+      downloadFile('sample_insurance_batch.csv', sampleContent, 'text/csv');
+      showToast('Sample CSV downloaded!');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('batch-drop-zone').classList.add('dragover');
+    }
+
+    function handleDragLeave(e) {
+      e.preventDefault();
+      document.getElementById('batch-drop-zone').classList.remove('dragover');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('batch-drop-zone').classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].name.toLowerCase().endsWith('.csv')) {
+        processCsvFile(files[0]);
+      } else {
+        showToast('Please drop a valid .csv file', 'warn');
+      }
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) {
+        processCsvFile(file);
+      }
+    }
+
+    function parseCsvText(text) {
+      const lines = text.trim().split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = vals[idx] !== undefined ? vals[idx] : '';
+        });
+        rows.push(obj);
+      }
+      return rows;
+    }
+
+    function processCsvFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        uploadedCsvRows = parseCsvText(text);
+        if (uploadedCsvRows.length === 0) {
+          showToast('CSV is empty or missing headers', 'warn');
+          return;
+        }
+        document.getElementById('chosen-file-name').textContent = file.name;
+        document.getElementById('chosen-file-rows').textContent = `${uploadedCsvRows.length} policyholders detected`;
+        document.getElementById('file-chosen-badge').style.display = 'flex';
+        showToast(`Loaded ${uploadedCsvRows.length} records. Click 'Run Batch Inference'.`);
+      };
+      reader.readAsText(file);
+    }
+
+    async function runBatchInference() {
+      if (uploadedCsvRows.length === 0) {
+        showToast('Please select a CSV file first', 'warn');
+        return;
+      }
+
+      const btn = document.getElementById('btn-process-batch');
+      btn.textContent = 'Scoring Batch... ⏳';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/predict_api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(uploadedCsvRows)
+        });
+        const data = await res.json();
+
+        if (data.status === 'success' && data.records) {
+          batchResultsData = data.records;
+          renderBatchResults(batchResultsData, data.latency_ms);
+          showToast(`Batch scoring complete for ${batchResultsData.length} records!`);
+        } else {
+          showToast(`Batch error: ${data.message || 'Failed to score'}`, 'warn');
+        }
+      } catch (err) {
+        showToast(`Request failed: ${err.message}`, 'warn');
+      } finally {
+        btn.textContent = '⚡ Run Batch Inference';
+        btn.disabled = false;
+      }
+    }
+
+    function renderBatchResults(records, latencyMs) {
+      document.getElementById('batch-kpi-row').style.display = 'grid';
+      document.getElementById('batch-results-wrapper').style.display = 'block';
+
+      const validPreds = records.filter(r => r.predicted_charge !== null).map(r => r.predicted_charge);
+      const totalRecords = records.length;
+      const portfolioTotal = validPreds.reduce((a, b) => a + b, 0);
+      const avgPred = validPreds.length > 0 ? (portfolioTotal / validPreds.length) : 0;
+
+      document.getElementById('batch-stat-total').textContent = totalRecords;
+      document.getElementById('batch-stat-portfolio').textContent = '$' + Math.round(portfolioTotal).toLocaleString();
+      document.getElementById('batch-stat-avg').textContent = '$' + Math.round(avgPred).toLocaleString();
+      document.getElementById('batch-stat-latency').textContent = (latencyMs || 12) + ' ms';
+
+      renderBatchTable(records);
+    }
+
+    function renderBatchTable(records) {
+      const tbody = document.getElementById('batch-table-body');
+      tbody.innerHTML = '';
+
+      records.slice(0, 300).forEach((row, i) => {
+        const tr = document.createElement('tr');
+        const pred = row.predicted_charge;
+        const isSmoker = (row.smoker || '').toLowerCase() === 'yes';
+        const isHighRisk = isSmoker || parseFloat(row.bmi) >= 30;
+
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${row.age || '-'}</td>
+          <td style="text-transform:capitalize;">${row.sex || '-'}</td>
+          <td>${row.bmi || '-'}</td>
+          <td>${row.children || '0'}</td>
+          <td><span class="table-badge ${isSmoker ? 'danger' : 'safe'}">${row.smoker || 'no'}</span></td>
+          <td style="text-transform:capitalize;">${row.region || '-'}</td>
+          <td class="pred-cell">${pred !== null ? '$' + Number(pred).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '<span style="color:#EF4444">Validation Error</span>'}</td>
+          <td><span class="table-badge ${isHighRisk ? 'danger' : 'safe'}">${isHighRisk ? 'HIGH RISK' : 'STANDARD'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterBatchTable(query) {
+      query = query.toLowerCase().trim();
+      if (!query) {
+        renderBatchTable(batchResultsData);
+        return;
+      }
+      const filtered = batchResultsData.filter(r => {
+        return Object.values(r).some(val => String(val).toLowerCase().includes(query));
+      });
+      renderBatchTable(filtered);
+    }
+
+    function exportBatchCsv() {
+      if (batchResultsData.length === 0) {
+        showToast('No batch results to export', 'warn');
+        return;
+      }
+      let csv = 'age,sex,bmi,children,smoker,region,predicted_charge,risk_level\n';
+      batchResultsData.forEach(r => {
+        const isSmoker = (r.smoker || '').toLowerCase() === 'yes';
+        const isHigh = isSmoker || parseFloat(r.bmi) >= 30;
+        csv += `${r.age},${r.sex},${r.bmi},${r.children},${r.smoker},${r.region},${r.predicted_charge || ''},${isHigh ? 'HIGH' : 'STANDARD'}\n`;
+      });
+      downloadFile('modelpulse_scored_batch.csv', csv, 'text/csv');
+      showToast('Scored batch exported as CSV!');
     }
 
     // ============================================================
@@ -1144,6 +1708,7 @@ print(response.json())
     // ============================================================
     updateBmiIndicator(document.getElementById('bmi').value);
     updateDepVisual(parseInt(document.getElementById('children').value));
+    checkUrlParams();
 
     // Animate result amount on page load
     {% if pred_value %}

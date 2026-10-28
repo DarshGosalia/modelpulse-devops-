@@ -15,6 +15,8 @@ import os
 import sys
 import time
 import json
+import csv
+import io
 import logging
 from datetime import datetime, timezone
 from collections import deque
@@ -278,12 +280,21 @@ if has_flask:
                 }), 200
             elif isinstance(payload, list):
                 results = []
-                for item in payload[:50]:  # Limit batch to 50
+                annotated = []
+                for item in payload[:1000]:  # Support up to 1000 batch items
                     item_dict, err = validate_inputs(item)
+                    item_copy = dict(item)
                     if err:
                         results.append({"error": err})
+                        item_copy["predicted_charge"] = None
+                        item_copy["error"] = err
                     else:
-                        results.append(round(run_inference_dict(item_dict), 2))
+                        pred_val = round(run_inference_dict(item_dict), 2)
+                        results.append(pred_val)
+                        item_copy["predicted_charge"] = pred_val
+                        item_copy["error"] = None
+                    annotated.append(item_copy)
+
                 latency = (time.time() - start_time) * 1000
                 valid_preds = [r for r in results if isinstance(r, float)]
                 log_prediction_event("/predict_api", {"batch": len(payload)},
@@ -292,6 +303,7 @@ if has_flask:
                     "status": "success",
                     "prediction": valid_preds[0] if valid_preds else 0,
                     "predictions": results,
+                    "records": annotated,
                     "latency_ms": round(latency, 2),
                     "model": MODEL_NAME,
                     "batch_size": len(payload)
@@ -301,6 +313,67 @@ if has_flask:
             latency = (time.time() - start_time) * 1000
             log_prediction_event("/predict_api", {}, None, latency, 500, error=str(e))
             return jsonify({"status": "error", "message": str(e)}), 500
+
+    @app.route("/predict_csv", methods=["POST"])
+    def predict_csv():
+        start_time = time.time()
+        try:
+            csv_content = None
+            if "file" in request.files:
+                f = request.files["file"]
+                if f.filename != "":
+                    csv_content = f.read().decode("utf-8", errors="replace")
+            elif request.data:
+                csv_content = request.data.decode("utf-8", errors="replace")
+
+            if not csv_content or not csv_content.strip():
+                return jsonify({"status": "error", "message": "No CSV file or content received."}), 400
+
+            reader = csv.DictReader(io.StringIO(csv_content.strip()))
+            records = []
+            predictions = []
+
+            for row in reader:
+                clean_row = {str(k).strip().lower(): str(v).strip() for k, v in row.items() if k is not None}
+                validated_row, err = validate_inputs(clean_row)
+                row_copy = dict(row)
+                if err:
+                    row_copy["predicted_charge"] = None
+                    row_copy["error"] = err
+                else:
+                    pred = round(run_inference_dict(validated_row), 2)
+                    row_copy["predicted_charge"] = pred
+                    row_copy["error"] = None
+                    predictions.append(pred)
+                records.append(row_copy)
+
+            latency = (time.time() - start_time) * 1000
+            total_valid = len(predictions)
+            summary = {
+                "total_rows": len(records),
+                "successful": total_valid,
+                "errors": len(records) - total_valid,
+                "avg_prediction": round(sum(predictions) / total_valid, 2) if total_valid > 0 else 0,
+                "max_prediction": max(predictions) if total_valid > 0 else 0,
+                "min_prediction": min(predictions) if total_valid > 0 else 0,
+                "total_portfolio": round(sum(predictions), 2),
+                "latency_ms": round(latency, 2)
+            }
+
+            log_prediction_event("/predict_csv", {"rows": len(records), "valid": total_valid},
+                                 summary["avg_prediction"], latency, 200)
+
+            return jsonify({
+                "status": "success",
+                "summary": summary,
+                "records": records[:1000],
+                "model": MODEL_NAME,
+                "engine": model_type
+            }), 200
+        except Exception as e:
+            latency = (time.time() - start_time) * 1000
+            log_prediction_event("/predict_csv", {}, None, latency, 500, error=str(e))
+            return jsonify({"status": "error", "message": f"CSV processing error: {str(e)}"}), 500
 
     @app.route("/health", methods=["GET"])
     def health():
@@ -492,6 +565,41 @@ else:
                         "model": MODEL_NAME
                     }
                     self.wfile.write(json.dumps(res).encode("utf-8"))
+            elif parsed.path == "/predict_csv":
+                try:
+                    reader = csv.DictReader(io.StringIO(body))
+                    records = []
+                    predictions = []
+                    for row in reader:
+                        clean_row = {str(k).strip().lower(): str(v).strip() for k, v in row.items() if k is not None}
+                        validated_row, err = validate_inputs(clean_row)
+                        row_copy = dict(row)
+                        if err:
+                            row_copy["predicted_charge"] = None
+                            row_copy["error"] = err
+                        else:
+                            pred = round(run_inference_dict(validated_row), 2)
+                            row_copy["predicted_charge"] = pred
+                            row_copy["error"] = None
+                            predictions.append(pred)
+                        records.append(row_copy)
+
+                    latency = (time.time() - start_time) * 1000
+                    total_valid = len(predictions)
+                    summary = {
+                        "total_rows": len(records),
+                        "successful": total_valid,
+                        "errors": len(records) - total_valid,
+                        "avg_prediction": round(sum(predictions) / total_valid, 2) if total_valid > 0 else 0,
+                        "max_prediction": max(predictions) if total_valid > 0 else 0,
+                        "min_prediction": min(predictions) if total_valid > 0 else 0,
+                        "total_portfolio": round(sum(predictions), 2),
+                        "latency_ms": round(latency, 2)
+                    }
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "success", "summary": summary, "records": records[:1000]}).encode("utf-8"))
                 except Exception as e:
                     self.send_response(400)
                     self.send_header("Content-Type", "application/json")
